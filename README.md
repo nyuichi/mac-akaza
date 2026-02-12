@@ -159,6 +159,26 @@ Akaza.app/
 └──
 ```
 
+## 開発
+
+### ビルド・インストール
+
+```bash
+make install
+```
+
+### コード変更後の反映
+
+`make install` 後、以下のコマンドで IME を再起動すれば反映される。ログアウト・ログインは不要。
+
+```bash
+killall AkazaIME
+```
+
+次にテキスト入力欄にフォーカスすると、macOS が新しいバイナリで自動的に再起動する。
+
+> **注意**: Info.plist の `InputMethodConnectionName` を変更した場合や、初回インストール時はログアウト・ログインが必要。
+
 ## 実装計画
 
 ### Phase 1: Swift IME の骨格
