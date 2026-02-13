@@ -1,0 +1,11 @@
+pre-commit:
+  commands:
+    swiftlint:
+      glob: "*.swift"
+      run: swiftlint lint --strict {staged_files}
+    clippy:
+      glob: "*.rs"
+      run: cargo clippy -- -D warnings
+    rustfmt:
+      glob: "*.rs"
+      run: cargo fmt --check
