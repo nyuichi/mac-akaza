@@ -3,12 +3,21 @@ import InputMethodKit
 
 @objc(AkazaInputController)
 class AkazaInputController: IMKInputController {
-    private var composedHiragana: String = ""
-    private let romajiConverter = RomajiConverter()
+    var composedHiragana: String = ""
+    let romajiConverter = RomajiConverter()
+    var inputState: InputState = .composing
+    static let candidateWindow = CandidateWindowController()
 
-    private var hasPreedit: Bool {
-        !composedHiragana.isEmpty || !romajiConverter.pendingRomaji.isEmpty
+    var hasPreedit: Bool {
+        switch inputState {
+        case .composing:
+            return !composedHiragana.isEmpty || !romajiConverter.pendingRomaji.isEmpty
+        case .converting:
+            return true
+        }
     }
+
+    // MARK: - Main event handler
 
     override func handle(_ event: NSEvent!, client sender: Any!) -> Bool {
         guard let event = event, event.type == .keyDown else {
@@ -23,46 +32,99 @@ class AkazaInputController: IMKInputController {
 
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         if flags.contains(.command) || flags.contains(.control) || flags.contains(.option) {
-            if hasPreedit { commitText(client: client) }
+            if hasPreedit { commitCurrentState(client: client) }
             return false
         }
 
-        switch keyCode {
-        case 36: return handleEnter(client: client)
-        case 53: return handleEscape(client: client)
-        case 51: return handleBackspace(client: client)
-        default: return handleCharacterInput(event: event, client: client)
+        switch inputState {
+        case .composing:
+            return handleComposingState(event: event, keyCode: keyCode, client: client)
+        case .converting:
+            return handleConvertingState(event: event, keyCode: keyCode, client: client)
         }
     }
 
-    private func handleEnter(client: any IMKTextInput) -> Bool {
-        guard hasPreedit else { return false }
-        commitText(client: client)
+    // MARK: - Composing state
+
+    private func handleComposingState(event: NSEvent, keyCode: UInt16, client: any IMKTextInput) -> Bool {
+        switch keyCode {
+        case 49: // Space
+            return handleSpaceInComposing(client: client)
+        case 36: // Enter
+            return handleEnterInComposing(client: client)
+        case 53: // Escape
+            return handleEscapeInComposing(client: client)
+        case 51: // Backspace
+            return handleBackspaceInComposing(client: client)
+        default:
+            return handleCharacterInput(event: event, client: client)
+        }
+    }
+
+    private func handleSpaceInComposing(client: any IMKTextInput) -> Bool {
+        guard hasPreedit else {
+            return false
+        }
+
+        var text = composedHiragana
+        if let flushed = romajiConverter.flush() {
+            text += flushed
+        }
+        guard !text.isEmpty else { return false }
+
+        guard let result = akazaClient.convertSync(yomi: text), !result.isEmpty else {
+            composedHiragana = text
+            updateComposingMarkedText(client: client)
+            return true
+        }
+
+        let session = ConversionSession(originalHiragana: text, clauses: result)
+        inputState = .converting(session)
+        composedHiragana = ""
+        updateConvertingMarkedText(client: client)
+        showCandidateWindow(client: client)
         return true
     }
 
-    private func handleEscape(client: any IMKTextInput) -> Bool {
+    private func handleEnterInComposing(client: any IMKTextInput) -> Bool {
+        guard hasPreedit else { return false }
+
+        var text = composedHiragana
+        if let flushed = romajiConverter.flush() {
+            text += flushed
+        }
+        guard !text.isEmpty else {
+            composedHiragana = ""
+            return true
+        }
+
+        client.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
+        composedHiragana = ""
+        return true
+    }
+
+    private func handleEscapeInComposing(client: any IMKTextInput) -> Bool {
         guard hasPreedit else { return false }
         composedHiragana = ""
         romajiConverter.clear()
-        updateMarkedText(client: client)
+        updateComposingMarkedText(client: client)
         return true
     }
 
-    private func handleBackspace(client: any IMKTextInput) -> Bool {
+    private func handleBackspaceInComposing(client: any IMKTextInput) -> Bool {
         if romajiConverter.backspace() {
-            updateMarkedText(client: client)
+            updateComposingMarkedText(client: client)
             return true
         }
         if !composedHiragana.isEmpty {
             composedHiragana.removeLast()
-            updateMarkedText(client: client)
+            updateComposingMarkedText(client: client)
             return true
         }
         return false
     }
 
-    private func handleCharacterInput(event: NSEvent, client: any IMKTextInput) -> Bool {
+    func handleCharacterInput(event: NSEvent, client: any IMKTextInput) -> Bool {
         guard let characters = event.characters, !characters.isEmpty else {
             return false
         }
@@ -76,7 +138,7 @@ class AkazaInputController: IMKInputController {
                     break
                 case .passthrough(let character):
                     if !composedHiragana.isEmpty {
-                        commitText(client: client)
+                        commitComposingText(client: client)
                     }
                     client.insertText(
                         String(character),
@@ -86,11 +148,22 @@ class AkazaInputController: IMKInputController {
                 }
             }
         }
-        updateMarkedText(client: client)
+        updateComposingMarkedText(client: client)
         return true
     }
 
-    private func commitText(client: any IMKTextInput) {
+    // MARK: - Commit helpers
+
+    func commitCurrentState(client: any IMKTextInput) {
+        switch inputState {
+        case .composing:
+            commitComposingText(client: client)
+        case .converting:
+            commitConvertingText(client: client)
+        }
+    }
+
+    func commitComposingText(client: any IMKTextInput) {
         var text = composedHiragana
         if let flushed = romajiConverter.flush() {
             text += flushed
@@ -99,36 +172,33 @@ class AkazaInputController: IMKInputController {
             composedHiragana = ""
             return
         }
-
-        // かな漢字変換を試行
-        if let result = akazaClient.convertSync(yomi: text) {
-            let converted = result.map { $0.first?.surface ?? "" }.joined()
-            if !converted.isEmpty {
-                client.insertText(converted, replacementRange: NSRange(location: NSNotFound, length: 0))
-                composedHiragana = ""
-                return
-            }
-        }
-
-        // フォールバック: 生ひらがなを確定
         client.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
         composedHiragana = ""
     }
 
-    private func updateMarkedText(client: any IMKTextInput) {
-        let preedit = composedHiragana + romajiConverter.pendingRomaji
-        if preedit.isEmpty {
-            client.setMarkedText(
-                "",
-                selectionRange: NSRange(location: 0, length: 0),
-                replacementRange: NSRange(location: NSNotFound, length: 0)
-            )
-        } else {
-            client.setMarkedText(
-                preedit,
-                selectionRange: NSRange(location: preedit.count, length: 0),
-                replacementRange: NSRange(location: NSNotFound, length: 0)
-            )
+    func commitConvertingText(client: any IMKTextInput) {
+        guard case .converting(let session) = inputState else { return }
+        let text = session.committedText
+        client.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
+        resetToComposing()
+    }
+
+    func resetToComposing() {
+        inputState = .composing
+        composedHiragana = ""
+        romajiConverter.clear()
+        Self.candidateWindow.hide()
+    }
+
+    // MARK: - IMKInputController overrides
+
+    override func deactivateServer(_ sender: Any!) {
+        if let client = sender as? (any IMKTextInput) {
+            if hasPreedit {
+                commitCurrentState(client: client)
+            }
         }
+        resetToComposing()
+        super.deactivateServer(sender)
     }
 }

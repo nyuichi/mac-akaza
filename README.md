@@ -224,6 +224,66 @@ killall AkazaIME
 - ビルドスクリプト整備
 - (将来) DMG / pkg インストーラー
 
+## トラブルシューティング
+
+### 変換結果が出ない / Space を押しても変換されない
+
+akaza-server がクラッシュしている可能性が高い。以下の手順で確認する。
+
+#### 1. ログを確認
+
+```bash
+tail -50 ~/Library/Logs/AkazaIME/akaza.log
+```
+
+`akaza-server terminated with status 1` が連続して出力されている場合、サーバーが起動直後にクラッシュしている。
+
+#### 2. akaza-server を手動で起動してエラーを確認
+
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"convert","params":{"yomi":"てすと"}}' | \
+  ~/Library/Input\ Methods/Akaza.app/Contents/MacOS/akaza-server \
+  ~/Library/Input\ Methods/Akaza.app/Contents/Resources/model 2>&1
+```
+
+stderr にエラーメッセージが出力される。
+
+#### 3. よくある原因: モデルデータが未配置
+
+```
+Error: No such file or directory (os error 2)
+```
+
+このエラーが出た場合、`Contents/Resources/model/` にモデルデータが配置されていない。`make install` はモデルのダウンロードも自動で行うので、再度実行する。
+
+```bash
+make install && killall AkazaIME
+```
+
+手動でモデルを配置する場合:
+
+```bash
+gh release download v2026.0212.1 \
+  --repo akaza-im/akaza-default-model \
+  --pattern "akaza-default-model.tar.gz" \
+  --dir /tmp
+tar xzf /tmp/akaza-default-model.tar.gz -C /tmp
+mkdir -p ~/Library/Input\ Methods/Akaza.app/Contents/Resources/model
+cp /tmp/akaza-default-model/*.model /tmp/akaza-default-model/SKK-JISYO.* \
+  ~/Library/Input\ Methods/Akaza.app/Contents/Resources/model/
+killall AkazaIME
+```
+
+### IME を切り替えても入力が反映されない
+
+```bash
+killall AkazaIME
+```
+
+次にテキスト入力欄にフォーカスすれば macOS が自動再起動する。
+
+初回インストール時や `Info.plist` の `InputMethodConnectionName` を変更した場合はログアウト・ログインが必要。
+
 ## Glossary
 
 - **preedit** - InputMethodKit では MarkedText と呼ばれる。変換確定前のテキスト
