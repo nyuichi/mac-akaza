@@ -3,7 +3,7 @@
 <plist version="1.0">
   <dict>
     <key>CFBundleExecutable</key>
-    <string>mac-akaza</string>
+    <string>AkazaIME</string>
     <key>CFBundleDisplayName</key>
     <string>Akaza</string>
     <key>CFBundleName</key>
@@ -18,18 +18,86 @@
     <string>akaza.icns</string>
 
     <key>LSBackgroundOnly</key>
-    <string>1</string>
+    <true/>
+    <key>LSUIElement</key>
+    <true/>
+
     <key>InputMethodConnectionName</key>
     <string>AkazaIME_1_Connection</string>
     <key>InputMethodServerControllerClass</key>
     <string>AkazaInputController</string>
-    <key>tsInputMethodIconFileKey</key>
-    <string>akaza.tiff</string>
+
+    <key>TISIntendedLanguage</key>
+    <string>ja</string>
+    <key>TISIconIsTemplate</key>
+    <true/>
+
+    <key>ComponentInputModeDict</key>
+    <dict>
+      <key>tsInputModeListKey</key>
+      <dict>
+
+        <key>com.github.tokuhirom.inputmethod.Japanese.Akaza.Japanese</key>
+        <dict>
+          <key>TISInputSourceID</key>
+          <string>com.github.tokuhirom.inputmethod.Japanese.Akaza.Japanese</string>
+          <key>TISIntendedLanguage</key>
+          <string>ja</string>
+          <key>tsInputModeScriptKey</key>
+          <string>smJapanese</string>
+          <key>tsInputModeDefaultStateKey</key>
+          <true/>
+          <key>tsInputModeIsVisibleKey</key>
+          <true/>
+          <key>tsInputModePrimaryInScriptKey</key>
+          <true/>
+          <key>tsInputModeJISKeyboardShortcutKey</key>
+          <integer>1</integer>
+          <key>tsInputModeMenuIconFileKey</key>
+          <string>akaza.tiff</string>
+          <key>tsInputModePaletteIconFileKey</key>
+          <string>akaza.tiff</string>
+        </dict>
+
+        <key>com.github.tokuhirom.inputmethod.Japanese.Akaza.Roman</key>
+        <dict>
+          <key>TISInputSourceID</key>
+          <string>com.github.tokuhirom.inputmethod.Japanese.Akaza.Roman</string>
+          <key>TISIntendedLanguage</key>
+          <string>en</string>
+          <key>tsInputModeScriptKey</key>
+          <string>smRoman</string>
+          <key>tsInputModeDefaultStateKey</key>
+          <true/>
+          <key>tsInputModeIsVisibleKey</key>
+          <true/>
+          <key>tsInputModePrimaryInScriptKey</key>
+          <false/>
+          <key>tsInputModeJISKeyboardShortcutKey</key>
+          <integer>3</integer>
+          <key>tsInputModeMenuIconFileKey</key>
+          <string>akaza.tiff</string>
+          <key>tsInputModePaletteIconFileKey</key>
+          <string>akaza.tiff</string>
+        </dict>
+
+      </dict>
+
+      <key>tsVisibleInputModeOrderedArrayKey</key>
+      <array>
+        <string>com.github.tokuhirom.inputmethod.Japanese.Akaza.Japanese</string>
+        <string>com.github.tokuhirom.inputmethod.Japanese.Akaza.Roman</string>
+      </array>
+    </dict>
+
     <key>tsInputMethodCharacterRepertoireKey</key>
     <array>
       <string>Latn</string>
       <string>Hira</string>
+      <string>Kana</string>
     </array>
+    <key>tsInputMethodIconFileKey</key>
+    <string>akaza.tiff</string>
 
   </dict>
 </plist>
