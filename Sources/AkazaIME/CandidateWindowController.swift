@@ -17,6 +17,7 @@ class CandidateWindowController {
         panel.hidesOnDeactivate = false
         panel.isOpaque = false
         panel.backgroundColor = NSColor.windowBackgroundColor
+        panel.ignoresMouseEvents = true
 
         stackView = NSStackView()
         stackView.orientation = .vertical

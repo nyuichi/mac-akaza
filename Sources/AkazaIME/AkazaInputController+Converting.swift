@@ -28,8 +28,8 @@ extension AkazaInputController {
             return handleNumberKeyInConverting(number: number, client: client)
         }
 
-        if let characters = event.characters, !characters.isEmpty,
-           characters.first?.isLetter == true || characters.first == "-" {
+        if let characters = event.characters, let first = characters.first,
+           !first.isNewline && !first.isWhitespace && (first.isLetter || first.isNumber || first.isPunctuation || first.isSymbol) {
             commitConvertingText(client: client)
             return handleCharacterInput(event: event, client: client)
         }
