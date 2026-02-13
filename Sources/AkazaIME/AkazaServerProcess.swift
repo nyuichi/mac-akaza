@@ -27,7 +27,6 @@ class AkazaServerProcess {
         let stdout = Pipe()
         proc.standardInput = stdin
         proc.standardOutput = stdout
-        proc.standardError = FileHandle.nullDevice
 
         proc.terminationHandler = { [weak self] terminatedProcess in
             guard let self = self else { return }
