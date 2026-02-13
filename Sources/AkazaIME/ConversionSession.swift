@@ -17,6 +17,14 @@ struct ConversionSession {
         self.selectedCandidateIndices = Array(repeating: 0, count: clauses.count)
     }
 
+    var selectedCandidates: [(surface: String, yomi: String)] {
+        clauses.enumerated().compactMap { index, candidates in
+            guard !candidates.isEmpty else { return nil }
+            let candidate = candidates[selectedCandidateIndices[index]]
+            return (surface: candidate.surface, yomi: candidate.yomi)
+        }
+    }
+
     var committedText: String {
         clauses.enumerated().map { index, candidates in
             guard !candidates.isEmpty else { return "" }

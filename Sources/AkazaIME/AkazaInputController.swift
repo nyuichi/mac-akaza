@@ -180,6 +180,7 @@ class AkazaInputController: IMKInputController {
         guard case .converting(let session) = inputState else { return }
         let text = session.committedText
         client.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
+        akazaClient.learnSync(candidates: session.selectedCandidates)
         resetToComposing()
     }
 

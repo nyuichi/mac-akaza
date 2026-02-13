@@ -55,6 +55,13 @@ class JSONRPCClient {
         }
     }
 
+    func learnSync(candidates: [(surface: String, yomi: String)]) {
+        let params: [String: Any] = [
+            "candidates": candidates.map { ["surface": $0.surface, "yomi": $0.yomi] }
+        ]
+        _ = sendRequestSync(method: "learn", params: params)
+    }
+
     func convertSync(yomi: String, forceRanges: [[Int]]? = nil) -> ConvertResult? {
         var params: [String: Any] = ["yomi": yomi]
         if let forceRanges = forceRanges {
@@ -131,7 +138,8 @@ class JSONRPCClient {
         }
 
         if let result = json["result"] {
-            if let resultData = try? JSONSerialization.data(withJSONObject: result) {
+            if JSONSerialization.isValidJSONObject(result),
+               let resultData = try? JSONSerialization.data(withJSONObject: result) {
                 completePending(id: id, data: resultData)
             } else {
                 completePending(id: id, data: nil)
