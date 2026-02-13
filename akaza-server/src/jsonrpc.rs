@@ -20,6 +20,8 @@ pub struct Request {
 #[derive(Debug, Deserialize)]
 pub struct ConvertParams {
     pub yomi: String,
+    #[serde(default)]
+    pub force_ranges: Option<Vec<Vec<usize>>>,
 }
 
 #[derive(Debug, Deserialize)]

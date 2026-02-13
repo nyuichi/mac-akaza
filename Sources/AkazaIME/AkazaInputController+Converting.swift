@@ -4,14 +4,22 @@ import InputMethodKit
 // MARK: - Converting state handlers
 extension AkazaInputController {
     func handleConvertingState(event: NSEvent, keyCode: UInt16, client: any IMKTextInput) -> Bool {
+        let isShiftPressed = event.modifierFlags.contains(.shift)
+
         switch keyCode {
         case 49, 125: // Space, Down arrow
             return handleNextCandidateInConverting(client: client)
         case 126: // Up arrow
             return handlePreviousCandidateInConverting(client: client)
         case 123: // Left arrow
+            if isShiftPressed {
+                return handleShrinkClauseLeft(client: client)
+            }
             return handlePreviousClauseInConverting(client: client)
         case 124: // Right arrow
+            if isShiftPressed {
+                return handleExtendClauseRight(client: client)
+            }
             return handleNextClauseInConverting(client: client)
         case 36: // Enter
             return handleEnterInConverting(client: client)
@@ -93,6 +101,38 @@ extension AkazaInputController {
             inputState = .converting(session)
             commitConvertingText(client: client)
         }
+        return true
+    }
+
+    private func handleExtendClauseRight(client: any IMKTextInput) -> Bool {
+        guard case .converting(let session) = inputState else { return false }
+        guard let (yomi, forceRanges) = session.forceRangesForExtendRight() else { return true }
+
+        let focusedIndex = session.focusedClauseIndex
+        guard let result = akazaClient.convertSync(yomi: yomi, forceRanges: forceRanges),
+              !result.isEmpty else { return true }
+
+        var newSession = ConversionSession(originalHiragana: yomi, clauses: result)
+        newSession.focusedClauseIndex = min(focusedIndex, newSession.clauses.count - 1)
+        inputState = .converting(newSession)
+        updateConvertingMarkedText(client: client)
+        showCandidateWindow(client: client)
+        return true
+    }
+
+    private func handleShrinkClauseLeft(client: any IMKTextInput) -> Bool {
+        guard case .converting(let session) = inputState else { return false }
+        guard let (yomi, forceRanges) = session.forceRangesForExtendLeft() else { return true }
+
+        let focusedIndex = session.focusedClauseIndex
+        guard let result = akazaClient.convertSync(yomi: yomi, forceRanges: forceRanges),
+              !result.isEmpty else { return true }
+
+        var newSession = ConversionSession(originalHiragana: yomi, clauses: result)
+        newSession.focusedClauseIndex = min(focusedIndex, newSession.clauses.count - 1)
+        inputState = .converting(newSession)
+        updateConvertingMarkedText(client: client)
+        showCandidateWindow(client: client)
         return true
     }
 }

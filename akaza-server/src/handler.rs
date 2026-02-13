@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use libakaza::engine::base::HenkanEngine;
 use libakaza::engine::bigram_word_viterbi_engine::BigramWordViterbiEngine;
 use libakaza::graph::candidate::Candidate;
@@ -55,7 +57,11 @@ impl<U: SystemUnigramLM, B: SystemBigramLM, KD: KanaKanjiDict> Handler<U, B, KD>
             }
         };
 
-        match self.engine.convert(&params.yomi, None) {
+        let force_ranges: Option<Vec<Range<usize>>> = params
+            .force_ranges
+            .map(|ranges| ranges.into_iter().map(|r| r[0]..r[1]).collect());
+
+        match self.engine.convert(&params.yomi, force_ranges.as_deref()) {
             Ok(clauses) => {
                 let result = Self::clauses_to_json(&clauses);
                 Response::success(request.id.clone(), result)

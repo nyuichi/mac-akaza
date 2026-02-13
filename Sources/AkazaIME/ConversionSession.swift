@@ -65,4 +65,68 @@ struct ConversionSession {
         selectedCandidateIndices[focusedClauseIndex] = index
         return true
     }
+
+    // MARK: - Clause boundary manipulation
+
+    var clauseYomis: [String] {
+        clauses.map { candidates in
+            candidates.first?.yomi ?? ""
+        }
+    }
+
+    /// 現在の文節を右に1文字伸ばした場合の yomi と force_ranges を返す
+    func forceRangesForExtendRight() -> (String, [[Int]])? {
+        let yomis = clauseYomis
+        // 最後の文節では次の文節がないので伸ばせない
+        guard focusedClauseIndex < yomis.count - 1 else { return nil }
+
+        let nextYomi = yomis[focusedClauseIndex + 1]
+        guard !nextYomi.isEmpty else { return nil }
+
+        // 次の文節の先頭1文字を現在の文節に移す
+        let firstChar = String(nextYomi.prefix(1))
+        let remaining = String(nextYomi.dropFirst())
+
+        var newYomis = yomis
+        newYomis[focusedClauseIndex] += firstChar
+        if remaining.isEmpty {
+            newYomis.remove(at: focusedClauseIndex + 1)
+        } else {
+            newYomis[focusedClauseIndex + 1] = remaining
+        }
+
+        return (originalHiragana, buildForceRanges(newYomis))
+    }
+
+    /// 現在の文節を左に1文字縮めた場合の yomi と force_ranges を返す
+    func forceRangesForExtendLeft() -> (String, [[Int]])? {
+        let yomis = clauseYomis
+        let currentYomi = yomis[focusedClauseIndex]
+
+        // 1文字しかない文節は縮められない
+        guard currentYomi.count > 1 else { return nil }
+        // 最後の文節では次の文節に文字を渡せない
+        guard focusedClauseIndex < yomis.count - 1 else { return nil }
+
+        // 現在の文節の末尾1文字を次の文節の先頭に移す
+        let lastChar = String(currentYomi.suffix(1))
+        let shortened = String(currentYomi.dropLast())
+
+        var newYomis = yomis
+        newYomis[focusedClauseIndex] = shortened
+        newYomis[focusedClauseIndex + 1] = lastChar + newYomis[focusedClauseIndex + 1]
+
+        return (originalHiragana, buildForceRanges(newYomis))
+    }
+
+    private func buildForceRanges(_ yomis: [String]) -> [[Int]] {
+        var ranges: [[Int]] = []
+        var byteOffset = 0
+        for yomi in yomis {
+            let byteCount = yomi.utf8.count
+            ranges.append([byteOffset, byteOffset + byteCount])
+            byteOffset += byteCount
+        }
+        return ranges
+    }
 }

@@ -55,7 +55,23 @@ class JSONRPCClient {
         }
     }
 
-    func convertSync(yomi: String) -> ConvertResult? {
+    func convertSync(yomi: String, forceRanges: [[Int]]? = nil) -> ConvertResult? {
+        var params: [String: Any] = ["yomi": yomi]
+        if let forceRanges = forceRanges {
+            params["force_ranges"] = forceRanges
+        }
+
+        guard let data = sendRequestSync(method: "convert", params: params) else { return nil }
+
+        do {
+            return try JSONDecoder().decode(ConvertResult.self, from: data)
+        } catch {
+            NSLog("AkazaIME: failed to decode convert result: \(error)")
+            return nil
+        }
+    }
+
+    private func sendRequestSync(method: String, params: [String: Any]) -> Data? {
         let semaphore = DispatchSemaphore(value: 0)
         var resultData: Data?
 
@@ -75,8 +91,8 @@ class JSONRPCClient {
         let request: [String: Any] = [
             "jsonrpc": "2.0",
             "id": requestID,
-            "method": "convert",
-            "params": ["yomi": yomi]
+            "method": method,
+            "params": params
         ]
 
         requestQueue.async { [weak self] in
@@ -105,15 +121,7 @@ class JSONRPCClient {
             return nil
         }
 
-        guard let data = resultData else { return nil }
-
-        do {
-            let result = try JSONDecoder().decode(ConvertResult.self, from: data)
-            return result
-        } catch {
-            NSLog("AkazaIME: failed to decode convert result: \(error)")
-            return nil
-        }
+        return resultData
     }
 
     private func handleResponse(_ data: Data) {
