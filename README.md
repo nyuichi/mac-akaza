@@ -107,7 +107,7 @@ AkazaIME/
 │       ├── CandidateWindow.swift         # 変換候補ウィンドウ
 │       └── PreferencesWindow.swift       # 設定画面
 ├── Resources/
-│   ├── romkan/default.yml
+│   ├── romkan/default.json
 │   ├── akaza.tiff
 │   └── akaza.icns
 └── Tests/
@@ -123,7 +123,7 @@ akaza リポジトリに `akaza-server` クレートを追加、または mac-ak
 Swift 側に実装する。理由:
 - キー入力ごとにリアルタイムでプリエディット表示が必要
 - RPC 往復のレイテンシを避ける
-- akaza の `romkan/default.yml` テーブルを読み込み、前方一致マッチで変換
+- akaza の `romkan/default.json` テーブルを読み込み、前方一致マッチで変換
 
 ### akaza-server の自動再起動
 
@@ -152,7 +152,7 @@ Akaza.app/
 │   │   │   ├── skip_bigram.model
 │   │   │   └── SKK-JISYO.akaza
 │   │   ├── romkan/
-│   │   │   └── default.yml
+│   │   │   └── default.json
 │   │   ├── akaza.tiff
 │   │   └── akaza.icns
 │   └── Frameworks/
@@ -189,7 +189,7 @@ killall AkazaIME
 
 ### Phase 2: ローマ字→ひらがな変換
 
-- `romkan/default.yml` を読み込み、ローマ字→かな変換を Swift で実装
+- `romkan/default.json` を読み込み、ローマ字→かな変換を Swift で実装
 - preedit (MarkedText) のリアルタイム表示
 - Enter で確定、Backspace で削除
 

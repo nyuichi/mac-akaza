@@ -19,21 +19,20 @@ class RomajiConverter {
 
     private func loadMapping() {
         guard let path = findMappingFile() else {
-            NSLog("AkazaIME: romkan/default.yml not found")
+            NSLog("AkazaIME: romkan/default.json not found")
             return
         }
-        guard let content = try? String(contentsOfFile: path, encoding: .utf8) else {
-            NSLog("AkazaIME: Failed to read romkan/default.yml")
+        guard let data = FileManager.default.contents(atPath: path) else {
+            NSLog("AkazaIME: Failed to read romkan/default.json")
             return
         }
-        parseYAML(content)
+        parseJSON(data)
         buildPrefixes()
     }
 
     private func findMappingFile() -> String? {
-        // App bundle の Resources から探す
         if let bundle = Bundle.main.resourcePath {
-            let path = (bundle as NSString).appendingPathComponent("romkan/default.yml")
+            let path = (bundle as NSString).appendingPathComponent("romkan/default.json")
             if FileManager.default.fileExists(atPath: path) {
                 return path
             }
@@ -41,33 +40,17 @@ class RomajiConverter {
         return nil
     }
 
-    private func parseYAML(_ content: String) {
-        var inMapping = false
-        for line in content.components(separatedBy: .newlines) {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed == "mapping:" {
-                inMapping = true
-                continue
+    private func parseJSON(_ data: Data) {
+        do {
+            guard let dict = try JSONSerialization.jsonObject(with: data) as? [String: String] else {
+                NSLog("AkazaIME: romkan/default.json is not a valid mapping")
+                return
             }
-            guard inMapping else { continue }
-            // "key": "value" 形式をパース
-            guard let match = parseKeyValue(trimmed) else { continue }
-            mapping[match.key] = match.value
+            mapping = dict
+        } catch {
+            NSLog("AkazaIME: Failed to parse romkan/default.json: \(error)")
         }
         NSLog("AkazaIME: Loaded \(mapping.count) romaji mappings")
-    }
-
-    private func parseKeyValue(_ line: String) -> (key: String, value: String)? {
-        // "key": "value" 形式
-        let scanner = Scanner(string: line)
-        guard scanner.scanString("\"") != nil else { return nil }
-        guard let key = scanner.scanUpToString("\"") else { return nil }
-        guard scanner.scanString("\"") != nil else { return nil }
-        guard scanner.scanString(":") != nil else { return nil }
-        _ = scanner.scanString(" ")
-        guard scanner.scanString("\"") != nil else { return nil }
-        guard let value = scanner.scanUpToString("\"") else { return nil }
-        return (key: key, value: value)
     }
 
     private func buildPrefixes() {
