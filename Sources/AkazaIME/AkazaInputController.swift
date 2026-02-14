@@ -129,9 +129,12 @@ class AkazaInputController: IMKInputController {
             return false
         }
         for char in characters {
-            // Skip control characters (e.g. Ctrl+P = 0x10, DEL = 0x7F)
-            // Return true to consume the event and prevent direct input
             let scalar = char.unicodeScalars.first!.value
+            // Ctrl+H (BS = 0x08): treat as backspace
+            if scalar == 0x08 {
+                return handleBackspaceInComposing(client: client)
+            }
+            // Skip other control characters (e.g. Ctrl+P = 0x10, DEL = 0x7F)
             if scalar < 0x20 || scalar == 0x7F {
                 return true
             }
