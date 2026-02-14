@@ -137,18 +137,7 @@ class AkazaInputController: IMKInputController {
                 case .pending:
                     break
                 case .passthrough(let character):
-                    if character.isNumber {
-                        composedHiragana += String(character)
-                    } else {
-                        if !composedHiragana.isEmpty {
-                            commitComposingText(client: client)
-                        }
-                        client.insertText(
-                            String(character),
-                            replacementRange: NSRange(location: NSNotFound, length: 0)
-                        )
-                        return true
-                    }
+                    composedHiragana += String(character)
                 }
             }
         }
