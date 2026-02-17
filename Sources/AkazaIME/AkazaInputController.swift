@@ -1,12 +1,18 @@
 import Cocoa
 import InputMethodKit
 
+struct ComposingSnapshot {
+    let composedHiragana: String
+    let romajiBuffer: String
+}
+
 @objc(AkazaInputController)
 class AkazaInputController: IMKInputController {
     var composedHiragana: String = ""
     let romajiConverter = RomajiConverter()
     var inputState: InputState = .composing
     static let candidateWindow = CandidateWindowController()
+    var inputHistory: [ComposingSnapshot] = []
 
     var hasPreedit: Bool {
         switch inputState {
@@ -78,6 +84,7 @@ class AkazaInputController: IMKInputController {
 
         guard let result = akazaClient.convertSync(yomi: text), !result.isEmpty else {
             composedHiragana = text
+            clearInputHistory()
             updateComposingMarkedText(client: client)
             return true
         }
@@ -85,6 +92,7 @@ class AkazaInputController: IMKInputController {
         let session = ConversionSession(originalHiragana: text, clauses: result)
         inputState = .converting(session)
         composedHiragana = ""
+        clearInputHistory()
         updateConvertingMarkedText(client: client)
         showCandidateWindow(client: client)
         return true
@@ -99,11 +107,13 @@ class AkazaInputController: IMKInputController {
         }
         guard !text.isEmpty else {
             composedHiragana = ""
+            clearInputHistory()
             return true
         }
 
         client.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
         composedHiragana = ""
+        clearInputHistory()
         return true
     }
 
@@ -111,21 +121,20 @@ class AkazaInputController: IMKInputController {
         guard hasPreedit else { return false }
         composedHiragana = ""
         romajiConverter.clear()
+        clearInputHistory()
         updateComposingMarkedText(client: client)
         return true
     }
 
     private func handleBackspaceInComposing(client: any IMKTextInput) -> Bool {
-        if romajiConverter.backspace() {
-            updateComposingMarkedText(client: client)
-            return true
-        }
-        if !composedHiragana.isEmpty {
-            composedHiragana.removeLast()
-            updateComposingMarkedText(client: client)
-            return true
-        }
-        return false
+        // Restore from input history if available
+        guard !inputHistory.isEmpty else { return false }
+
+        let snapshot = inputHistory.removeLast()
+        composedHiragana = snapshot.composedHiragana
+        romajiConverter.setBuffer(snapshot.romajiBuffer)
+        updateComposingMarkedText(client: client)
+        return true
     }
 
     func handleCharacterInput(event: NSEvent, client: any IMKTextInput) -> Bool {
@@ -142,6 +151,10 @@ class AkazaInputController: IMKInputController {
             if scalar < 0x20 || scalar == 0x7F {
                 return true
             }
+
+            // Save current state before processing input
+            saveInputSnapshot()
+
             let results = romajiConverter.feed(char)
             for result in results {
                 switch result {
@@ -156,6 +169,20 @@ class AkazaInputController: IMKInputController {
         }
         updateComposingMarkedText(client: client)
         return true
+    }
+
+    // MARK: - Input history
+
+    private func saveInputSnapshot() {
+        let snapshot = ComposingSnapshot(
+            composedHiragana: composedHiragana,
+            romajiBuffer: romajiConverter.pendingRomaji
+        )
+        inputHistory.append(snapshot)
+    }
+
+    private func clearInputHistory() {
+        inputHistory.removeAll()
     }
 
     // MARK: - Commit helpers
@@ -176,10 +203,12 @@ class AkazaInputController: IMKInputController {
         }
         guard !text.isEmpty else {
             composedHiragana = ""
+            clearInputHistory()
             return
         }
         client.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
         composedHiragana = ""
+        clearInputHistory()
     }
 
     func commitConvertingText(client: any IMKTextInput) {
@@ -194,6 +223,7 @@ class AkazaInputController: IMKInputController {
         inputState = .composing
         composedHiragana = ""
         romajiConverter.clear()
+        clearInputHistory()
         Self.candidateWindow.hide()
     }
 
