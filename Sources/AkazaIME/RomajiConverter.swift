@@ -144,4 +144,8 @@ class RomajiConverter {
     func clear() {
         buffer = ""
     }
+
+    func setBuffer(_ newBuffer: String) {
+        buffer = newBuffer
+    }
 }
