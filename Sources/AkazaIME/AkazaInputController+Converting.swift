@@ -195,18 +195,26 @@ extension AkazaInputController {
     func showCandidateWindow(client: any IMKTextInput) {
         guard case .converting(let session) = inputState else { return }
 
-        let candidates = session.focusedCandidates
-        guard !candidates.isEmpty else {
+        let allCandidates = session.focusedCandidates
+        guard !allCandidates.isEmpty else {
             Self.candidateWindow.hide()
             return
         }
+
+        // surfaceが同じ候補を除去（挿入順を保持）
+        var seen = Set<String>()
+        let candidates = allCandidates.filter { seen.insert($0.surface).inserted }
+
+        // 選択中候補のsurfaceに対応するインデックスを求める
+        let selectedSurface = allCandidates[session.focusedSelectedIndex].surface
+        let selectedIndex = candidates.firstIndex(where: { $0.surface == selectedSurface }) ?? 0
 
         var lineHeightRect = NSRect.zero
         client.attributes(forCharacterIndex: 0, lineHeightRectangle: &lineHeightRect)
 
         Self.candidateWindow.show(
             candidates: candidates,
-            selectedIndex: session.focusedSelectedIndex,
+            selectedIndex: selectedIndex,
             cursorRect: lineHeightRect
         )
     }
