@@ -103,28 +103,87 @@ class CandidateWindowController {
         candidateLabels.append(pageIndicator)
     }
 
-    private func positionPanel(cursorRect: NSRect) {
+    private func positionPanel(cursorRect: NSRect, stablePosition: Bool = false) {
         stackView.layoutSubtreeIfNeeded()
         let contentSize = stackView.fittingSize
         let panelWidth = max(contentSize.width + 16, 120)
         let panelHeight = contentSize.height + 8
 
-        var origin = NSPoint(x: cursorRect.origin.x, y: cursorRect.origin.y - panelHeight)
-
         // cursorRect が zero の場合のフォールバック
-        if cursorRect == .zero {
-            origin = NSPoint(x: 100, y: 100)
+        guard cursorRect != .zero else {
+            panel.setFrame(NSRect(x: 100, y: 100, width: panelWidth, height: panelHeight), display: true)
+            panel.orderFront(nil)
+            return
         }
 
-        // 画面下端からはみ出す場合はカーソルの上に表示
+        // 上下判定は最大高さで行い、候補数が変わっても位置が安定するようにする
+        let heightForDecision: CGFloat
+        if stablePosition {
+            let lineHeight: CGFloat = 18
+            heightForDecision = CGFloat(maxDisplayCount) * lineHeight + 8
+        } else {
+            heightForDecision = panelHeight
+        }
+
+        let showAbove: Bool
         if let screen = NSScreen.main {
-            if origin.y < screen.visibleFrame.origin.y {
-                origin.y = cursorRect.origin.y + cursorRect.size.height
-            }
+            showAbove = cursorRect.origin.y - heightForDecision < screen.visibleFrame.origin.y
+        } else {
+            showAbove = false
         }
 
-        panel.setFrame(NSRect(x: origin.x, y: origin.y, width: panelWidth, height: panelHeight), display: true)
+        let originY: CGFloat
+        if showAbove {
+            // カーソルの上に表示（下端をカーソル上端に合わせる）
+            originY = cursorRect.origin.y + cursorRect.size.height
+        } else {
+            // カーソルの下に表示（上端をカーソル下端に合わせる）
+            originY = cursorRect.origin.y - panelHeight
+        }
+
+        panel.setFrame(NSRect(x: cursorRect.origin.x, y: originY, width: panelWidth, height: panelHeight), display: true)
         panel.orderFront(nil)
+    }
+
+    func showSuggestions(suggestions: [String], selectedIndex: Int, cursorRect: NSRect) {
+        clearLabels()
+
+        guard !suggestions.isEmpty else {
+            hide()
+            return
+        }
+
+        let pageSize = maxDisplayCount
+        let currentPage = selectedIndex / pageSize
+        let pageStart = currentPage * pageSize
+        let pageEnd = min(pageStart + pageSize, suggestions.count)
+        let totalPages = (suggestions.count + pageSize - 1) / pageSize
+
+        for idx in pageStart..<pageEnd {
+            let displayNumber = idx - pageStart + 1
+            let label = NSTextField(labelWithString: "\(displayNumber). \(suggestions[idx])")
+            label.font = NSFont.systemFont(ofSize: 14)
+            label.translatesAutoresizingMaskIntoConstraints = false
+
+            if idx == selectedIndex {
+                label.backgroundColor = NSColor.selectedContentBackgroundColor
+                label.textColor = NSColor.white
+                label.drawsBackground = true
+            } else {
+                label.backgroundColor = .clear
+                label.textColor = NSColor.labelColor
+                label.drawsBackground = false
+            }
+
+            stackView.addArrangedSubview(label)
+            candidateLabels.append(label)
+        }
+
+        if totalPages > 1 {
+            addPageIndicator(currentPage: currentPage, totalPages: totalPages)
+        }
+
+        positionPanel(cursorRect: cursorRect, stablePosition: true)
     }
 
     func hide() {

@@ -2,6 +2,7 @@ import Foundation
 
 enum InputState {
     case composing
+    case suggesting(SuggestSession)
     case converting(ConversionSession)
 }
 

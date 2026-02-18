@@ -8,6 +8,11 @@ struct ConvertCandidate: Decodable {
 
 typealias ConvertResult = [[ConvertCandidate]]
 
+struct KBestPath: Decodable {
+    let segments: [[ConvertCandidate]]
+    let cost: Float
+}
+
 struct UserDictEntry: Decodable {
     let yomi: String
     let surfaces: [String]
@@ -101,6 +106,64 @@ class JSONRPCClient {
             NSLog("AkazaIME: failed to decode convert result: \(error)")
             return nil
         }
+    }
+
+    func convertKBestAsync(yomi: String, maxPaths: Int, completion: @escaping ([KBestPath]?) -> Void) -> Int {
+        let params: [String: Any] = ["yomi": yomi, "k": maxPaths]
+
+        let requestID = requestQueue.sync { () -> Int in
+            let id = self.nextID
+            self.nextID += 1
+            return id
+        }
+
+        lock.lock()
+        pendingRequests[requestID] = { data in
+            guard let data = data else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+            do {
+                let paths = try JSONDecoder().decode([KBestPath].self, from: data)
+                DispatchQueue.main.async { completion(paths) }
+            } catch {
+                NSLog("AkazaIME: failed to decode convert_k_best result: \(error)")
+                DispatchQueue.main.async { completion(nil) }
+            }
+        }
+        lock.unlock()
+
+        let request: [String: Any] = [
+            "jsonrpc": "2.0",
+            "id": requestID,
+            "method": "convert_k_best",
+            "params": params
+        ]
+
+        requestQueue.async { [weak self] in
+            guard let self = self,
+                  let stdin = self.serverProcess.stdinPipe else {
+                self?.completePending(id: requestID, data: nil)
+                return
+            }
+
+            do {
+                var data = try JSONSerialization.data(withJSONObject: request)
+                data.append(0x0A)
+                stdin.fileHandleForWriting.write(data)
+            } catch {
+                NSLog("AkazaIME: failed to serialize JSON-RPC request: \(error)")
+                self.completePending(id: requestID, data: nil)
+            }
+        }
+
+        return requestID
+    }
+
+    func cancelRequest(id: Int) {
+        lock.lock()
+        pendingRequests.removeValue(forKey: id)
+        lock.unlock()
     }
 
     private func sendRequestSync(method: String, params: [String: Any]) -> Data? {
