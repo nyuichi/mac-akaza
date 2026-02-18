@@ -146,14 +146,19 @@ extension AkazaInputController {
         let preedit = composedHiragana + romajiConverter.pendingRomaji
         if preedit.isEmpty {
             client.setMarkedText(
-                "",
+                NSAttributedString(string: ""),
                 selectionRange: NSRange(location: 0, length: 0),
                 replacementRange: NSRange(location: NSNotFound, length: 0)
             )
         } else {
+            let attrs: [NSAttributedString.Key: Any] = [
+                .underlineStyle: NSUnderlineStyle.single.rawValue
+            ]
+            let attributed = NSAttributedString(string: preedit, attributes: attrs)
+            let length = (preedit as NSString).length
             client.setMarkedText(
-                preedit,
-                selectionRange: NSRange(location: preedit.count, length: 0),
+                attributed,
+                selectionRange: NSRange(location: length, length: 0),
                 replacementRange: NSRange(location: NSNotFound, length: 0)
             )
         }
