@@ -93,9 +93,8 @@ extension AkazaInputController {
 
     func commitSuggestingText(client: any IMKTextInput) {
         guard case .suggesting(let session) = inputState else { return }
-        let text = session.displayText
+        let text = session.originalHiragana
         client.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
-        akazaClient.learnSync(candidates: session.selectedCandidates)
         resetToComposing()
     }
 
