@@ -420,7 +420,7 @@ checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 [[package]]
 name = "libakaza"
 version = "0.1.7"
-source = "git+https://github.com/akaza-im/akaza.git?tag=v2026.218.0#1f51c404ad76c3358d376ddf8d47a45783aeb90b"
+source = "git+https://github.com/akaza-im/akaza.git?tag=v2026.220.0#f00aedf1e027bfbcef93522356759da26752ddef"
 dependencies = [
  "anyhow",
  "cedarwood",

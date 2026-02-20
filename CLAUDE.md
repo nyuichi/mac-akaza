@@ -39,6 +39,25 @@ Resources/         # アイコン等のリソース
 - akaza-server との通信は非同期で行い、UI スレッドをブロックしないこと
 - akaza-server のクラッシュに備え、変換リクエストのタイムアウトを設定すること
 
+## バージョンアップ手順
+
+akaza ライブラリとモデルを新しいバージョン（例: `vYYYY.MMD.0`）に更新する場合、以下の 2 ファイルを修正する。
+
+1. `akaza-server/Cargo.toml` の `libakaza` タグを更新
+   ```toml
+   libakaza = { git = "https://github.com/akaza-im/akaza.git", tag = "vYYYY.MMD.0" }
+   ```
+
+2. `Makefile` の `MODEL_VERSION` を更新
+   ```makefile
+   MODEL_VERSION = vYYYY.MMD.0
+   ```
+
+3. `Cargo.lock` を更新
+   ```sh
+   cargo update -p libakaza
+   ```
+
 ## 関連リポジトリ
 
 - [akaza](https://github.com/akaza-im/akaza) - Rust 製かな漢字変換エンジン (コアライブラリ libakaza)
