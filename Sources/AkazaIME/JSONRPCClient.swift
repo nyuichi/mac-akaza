@@ -18,6 +18,16 @@ struct UserDictEntry: Decodable {
     let surfaces: [String]
 }
 
+struct ModelInfo: Decodable {
+    let akazaDataVersion: String?
+    let buildTimestamp: String?
+
+    enum CodingKeys: String, CodingKey {
+        case akazaDataVersion = "akaza_data_version"
+        case buildTimestamp = "build_timestamp"
+    }
+}
+
 class JSONRPCClient {
     private let serverProcess: AkazaServerProcess
     private var nextID = 1
@@ -62,6 +72,16 @@ class JSONRPCClient {
                     self?.handleResponse(lineData)
                 }
             }
+        }
+    }
+
+    func modelInfoSync() -> ModelInfo? {
+        guard let data = sendRequestSync(method: "model_info", params: [:]) else { return nil }
+        do {
+            return try JSONDecoder().decode(ModelInfo.self, from: data)
+        } catch {
+            NSLog("AkazaIME: failed to decode model_info result: \(error)")
+            return nil
         }
     }
 

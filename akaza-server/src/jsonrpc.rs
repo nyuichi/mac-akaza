@@ -60,6 +60,12 @@ pub struct UserDictEntry {
 }
 
 #[derive(Debug, Serialize)]
+pub struct ModelInfoResult {
+    pub akaza_data_version: Option<String>,
+    pub build_timestamp: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct CandidateResult {
     pub surface: String,
     pub yomi: String,

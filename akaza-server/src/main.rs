@@ -32,7 +32,7 @@ fn main() -> Result<()> {
     ));
 
     let config = EngineConfig {
-        model: model_dir,
+        model: model_dir.clone(),
         dicts: vec![],
         dict_cache: true,
         reranking_weights: ReRankingWeights::default(),
@@ -51,7 +51,7 @@ fn main() -> Result<()> {
         .unwrap()
         .to_string();
 
-    let mut handler = handler::Handler::new(engine, dict_path);
+    let mut handler = handler::Handler::new(engine, dict_path, model_dir.clone());
 
     let stdin = io::stdin();
     let mut stdout = io::stdout();

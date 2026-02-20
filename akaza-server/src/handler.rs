@@ -7,6 +7,7 @@ use libakaza::engine::bigram_word_viterbi_engine::BigramWordViterbiEngine;
 use libakaza::graph::candidate::Candidate;
 use libakaza::kana_kanji::base::KanaKanjiDict;
 use libakaza::lm::base::{SystemBigramLM, SystemUnigramLM};
+use libakaza::lm::system_unigram_lm::MarisaSystemUnigramLM;
 use log::{error, info};
 use serde_json::Value;
 
@@ -15,11 +16,20 @@ use crate::jsonrpc::*;
 pub struct Handler<U: SystemUnigramLM, B: SystemBigramLM, KD: KanaKanjiDict> {
     engine: BigramWordViterbiEngine<U, B, KD>,
     dict_path: String,
+    model_dir: String,
 }
 
 impl<U: SystemUnigramLM, B: SystemBigramLM, KD: KanaKanjiDict> Handler<U, B, KD> {
-    pub fn new(engine: BigramWordViterbiEngine<U, B, KD>, dict_path: String) -> Self {
-        Self { engine, dict_path }
+    pub fn new(
+        engine: BigramWordViterbiEngine<U, B, KD>,
+        dict_path: String,
+        model_dir: String,
+    ) -> Self {
+        Self {
+            engine,
+            dict_path,
+            model_dir,
+        }
     }
 
     pub fn handle_request(&mut self, line: &str) -> String {
@@ -41,6 +51,7 @@ impl<U: SystemUnigramLM, B: SystemBigramLM, KD: KanaKanjiDict> Handler<U, B, KD>
             "user_dict_list" => self.handle_user_dict_list(&request),
             "user_dict_add" => self.handle_user_dict_add(&request),
             "user_dict_delete" => self.handle_user_dict_delete(&request),
+            "model_info" => self.handle_model_info(&request),
             _ => Response::error(
                 request.id,
                 METHOD_NOT_FOUND,
@@ -285,6 +296,28 @@ impl<U: SystemUnigramLM, B: SystemBigramLM, KD: KanaKanjiDict> Handler<U, B, KD>
                     request.id.clone(),
                     INTERNAL_ERROR,
                     "Failed to access user data".to_string(),
+                )
+            }
+        }
+    }
+
+    fn handle_model_info(&self, request: &Request) -> Response {
+        let unigram_path = format!("{}/unigram.model", self.model_dir);
+        match MarisaSystemUnigramLM::load(&unigram_path) {
+            Ok(lm) => {
+                let metadata = lm.metadata();
+                let result = ModelInfoResult {
+                    akaza_data_version: metadata.akaza_data_version,
+                    build_timestamp: metadata.build_timestamp,
+                };
+                Response::success(request.id.clone(), serde_json::to_value(result).unwrap())
+            }
+            Err(e) => {
+                error!("model_info: failed to load unigram model: {}", e);
+                Response::error(
+                    request.id.clone(),
+                    INTERNAL_ERROR,
+                    format!("Failed to load model: {}", e),
                 )
             }
         }
