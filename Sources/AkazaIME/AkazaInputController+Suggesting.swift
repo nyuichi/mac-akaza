@@ -20,6 +20,8 @@ extension AkazaInputController {
             return handleEscapeInSuggesting(client: client)
         case 51: // Backspace
             return handleBackspaceInSuggesting(client: client)
+        case 123, 124, 125, 126: // Arrow keys (Left, Right, Down, Up)
+            return true
         default:
             return handleCharacterInSuggesting(event: event, client: client)
         }
