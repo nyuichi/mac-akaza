@@ -13,4 +13,9 @@ class Settings {
         get { PunctuationStyle(rawValue: defaults.integer(forKey: "punctuationStyle")) ?? .kutouten }
         set { defaults.set(newValue.rawValue, forKey: "punctuationStyle") }
     }
+
+    var additionalDictPaths: [String] {
+        get { defaults.stringArray(forKey: "additionalDictPaths") ?? [] }
+        set { defaults.set(newValue, forKey: "additionalDictPaths") }
+    }
 }

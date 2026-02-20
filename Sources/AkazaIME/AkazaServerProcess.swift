@@ -2,15 +2,6 @@ import Cocoa
 
 private let skkJisyoLURL = "https://raw.githubusercontent.com/skk-dev/dict/master/SKK-JISYO.L"
 
-private func skkJisyoLPath() -> URL? {
-    guard let xdgData = ProcessInfo.processInfo.environment["XDG_DATA_HOME"]
-        .map({ URL(fileURLWithPath: $0) })
-        ?? Optional(FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".local/share"))
-    else { return nil }
-    return xdgData.appendingPathComponent("akaza/SKK-JISYO.L")
-}
-
 class AkazaServerProcess {
     private var process: Process?
     private(set) var stdinPipe: Pipe?
@@ -20,6 +11,15 @@ class AkazaServerProcess {
     private var shouldRestart = true
 
     var onRestart: (() -> Void)?
+
+    func skkJisyoLPath() -> URL? {
+        guard let xdgData = ProcessInfo.processInfo.environment["XDG_DATA_HOME"]
+            .map({ URL(fileURLWithPath: $0) })
+            ?? Optional(FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".local/share"))
+        else { return nil }
+        return xdgData.appendingPathComponent("akaza/SKK-JISYO.L")
+    }
 
     func downloadSKKDictIfNeeded(completion: @escaping () -> Void) {
         guard let dest = skkJisyoLPath() else {
@@ -70,7 +70,7 @@ class AkazaServerProcess {
 
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: serverPath)
-        proc.arguments = [modelPath]
+        proc.arguments = [modelPath] + Settings.shared.additionalDictPaths
 
         let stdin = Pipe()
         let stdout = Pipe()
@@ -113,6 +113,19 @@ class AkazaServerProcess {
         ) { [weak self] _ in
             self?.stop()
         }
+    }
+
+    func restart() {
+        shouldRestart = false
+        process?.terminate()
+        process?.waitUntilExit()
+        process = nil
+        stdinPipe = nil
+        stdoutPipe = nil
+        shouldRestart = true
+        restartCount = 0
+        start()
+        onRestart?()
     }
 
     func stop() {

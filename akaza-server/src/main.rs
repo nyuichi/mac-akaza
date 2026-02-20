@@ -44,6 +44,33 @@ fn main() -> Result<()> {
         }
     }
 
+    for dict_arg in std::env::args().skip(2) {
+        let parts: Vec<&str> = dict_arg.rsplitn(2, ':').collect();
+        if parts.len() == 2 {
+            let path = parts[1];
+            let encoding = match parts[0] {
+                "eucjp" => DictEncoding::EucJp,
+                "utf8" => DictEncoding::Utf8,
+                other => {
+                    log::warn!("Unknown encoding '{}' for dict '{}', skipping", other, path);
+                    continue;
+                }
+            };
+            info!("Loading additional dict: {} ({})", path, parts[0]);
+            dicts.push(DictConfig {
+                path: path.to_string(),
+                encoding,
+                dict_type: libakaza::config::DictType::SKK,
+                usage: DictUsage::Normal,
+            });
+        } else {
+            log::warn!(
+                "Invalid dict argument '{}', expected <path>:<encoding>",
+                dict_arg
+            );
+        }
+    }
+
     let config = EngineConfig {
         model: model_dir.clone(),
         dicts,
