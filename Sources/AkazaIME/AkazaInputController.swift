@@ -137,7 +137,13 @@ class AkazaInputController: IMKInputController {
         // Restore from input history if available
         guard !inputHistory.isEmpty else { return false }
 
-        let snapshot = inputHistory.removeLast()
+        // Skip snapshots with non-empty romajiBuffer to treat multi-key romaji sequences
+        // (e.g. "ge" → "げ") as a single character for backspace purposes.
+        var snapshot: ComposingSnapshot
+        repeat {
+            snapshot = inputHistory.removeLast()
+        } while !snapshot.romajiBuffer.isEmpty && !inputHistory.isEmpty
+
         composedHiragana = snapshot.composedHiragana
         romajiConverter.setBuffer(snapshot.romajiBuffer)
         updateComposingMarkedText(client: client)
