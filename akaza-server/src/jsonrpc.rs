@@ -65,6 +65,32 @@ pub struct ModelInfoResult {
     pub build_timestamp: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct LookupUnigramParams {
+    pub word: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LookupUnigramResult {
+    pub found: bool,
+    pub word_id: Option<i32>,
+    pub score: Option<f32>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LookupBigramParams {
+    pub word1: String,
+    pub word2: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LookupBigramResult {
+    pub found: bool,
+    pub word1_id: Option<i32>,
+    pub word2_id: Option<i32>,
+    pub score: Option<f32>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct CandidateResult {
     pub surface: String,

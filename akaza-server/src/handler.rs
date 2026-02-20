@@ -7,6 +7,7 @@ use libakaza::engine::bigram_word_viterbi_engine::BigramWordViterbiEngine;
 use libakaza::graph::candidate::Candidate;
 use libakaza::kana_kanji::base::KanaKanjiDict;
 use libakaza::lm::base::{SystemBigramLM, SystemUnigramLM};
+use libakaza::lm::system_bigram::MarisaSystemBigramLM;
 use libakaza::lm::system_unigram_lm::MarisaSystemUnigramLM;
 use log::{error, info};
 use serde_json::Value;
@@ -17,6 +18,8 @@ pub struct Handler<U: SystemUnigramLM, B: SystemBigramLM, KD: KanaKanjiDict> {
     engine: BigramWordViterbiEngine<U, B, KD>,
     dict_path: String,
     model_dir: String,
+    unigram_lm: MarisaSystemUnigramLM,
+    bigram_lm: MarisaSystemBigramLM,
 }
 
 impl<U: SystemUnigramLM, B: SystemBigramLM, KD: KanaKanjiDict> Handler<U, B, KD> {
@@ -24,11 +27,15 @@ impl<U: SystemUnigramLM, B: SystemBigramLM, KD: KanaKanjiDict> Handler<U, B, KD>
         engine: BigramWordViterbiEngine<U, B, KD>,
         dict_path: String,
         model_dir: String,
+        unigram_lm: MarisaSystemUnigramLM,
+        bigram_lm: MarisaSystemBigramLM,
     ) -> Self {
         Self {
             engine,
             dict_path,
             model_dir,
+            unigram_lm,
+            bigram_lm,
         }
     }
 
@@ -52,6 +59,8 @@ impl<U: SystemUnigramLM, B: SystemBigramLM, KD: KanaKanjiDict> Handler<U, B, KD>
             "user_dict_add" => self.handle_user_dict_add(&request),
             "user_dict_delete" => self.handle_user_dict_delete(&request),
             "model_info" => self.handle_model_info(&request),
+            "lookup_unigram" => self.handle_lookup_unigram(&request),
+            "lookup_bigram" => self.handle_lookup_bigram(&request),
             _ => Response::error(
                 request.id,
                 METHOD_NOT_FOUND,
@@ -299,6 +308,81 @@ impl<U: SystemUnigramLM, B: SystemBigramLM, KD: KanaKanjiDict> Handler<U, B, KD>
                 )
             }
         }
+    }
+
+    fn handle_lookup_unigram(&self, request: &Request) -> Response {
+        let params: LookupUnigramParams = match serde_json::from_value(request.params.clone()) {
+            Ok(p) => p,
+            Err(e) => {
+                return Response::error(
+                    request.id.clone(),
+                    INVALID_PARAMS,
+                    format!("Invalid params: {}", e),
+                );
+            }
+        };
+
+        let result = match self.unigram_lm.lookup(&params.word) {
+            Some((word_id, score)) => LookupUnigramResult {
+                found: true,
+                word_id: Some(word_id),
+                score: Some(score),
+            },
+            None => LookupUnigramResult {
+                found: false,
+                word_id: None,
+                score: None,
+            },
+        };
+        Response::success(request.id.clone(), serde_json::to_value(result).unwrap())
+    }
+
+    fn handle_lookup_bigram(&self, request: &Request) -> Response {
+        let params: LookupBigramParams = match serde_json::from_value(request.params.clone()) {
+            Ok(p) => p,
+            Err(e) => {
+                return Response::error(
+                    request.id.clone(),
+                    INVALID_PARAMS,
+                    format!("Invalid params: {}", e),
+                );
+            }
+        };
+
+        let (word1_id, word2_id) = match (
+            self.unigram_lm.lookup(&params.word1),
+            self.unigram_lm.lookup(&params.word2),
+        ) {
+            (Some((id1, _)), Some((id2, _))) => (id1, id2),
+            _ => {
+                let result = LookupBigramResult {
+                    found: false,
+                    word1_id: self.unigram_lm.lookup(&params.word1).map(|(id, _)| id),
+                    word2_id: self.unigram_lm.lookup(&params.word2).map(|(id, _)| id),
+                    score: None,
+                };
+                return Response::success(
+                    request.id.clone(),
+                    serde_json::to_value(result).unwrap(),
+                );
+            }
+        };
+
+        let result = match self.bigram_lm.lookup(word1_id, word2_id) {
+            Some(score) => LookupBigramResult {
+                found: true,
+                word1_id: Some(word1_id),
+                word2_id: Some(word2_id),
+                score: Some(score),
+            },
+            None => LookupBigramResult {
+                found: false,
+                word1_id: Some(word1_id),
+                word2_id: Some(word2_id),
+                score: None,
+            },
+        };
+        Response::success(request.id.clone(), serde_json::to_value(result).unwrap())
     }
 
     fn handle_model_info(&self, request: &Request) -> Response {
