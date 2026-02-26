@@ -35,6 +35,7 @@ install: build download-model
 	cp target/release/akaza-server $(APP)/Contents/MacOS/
 	cp -r resources/* $(APP)/Contents/Resources/
 	cp $(MODEL_DIR)/akaza-default-model/*.model $(APP)/Contents/Resources/model/
+	cp $(MODEL_DIR)/akaza-default-model/*.model.scores $(APP)/Contents/Resources/model/
 	cp $(MODEL_DIR)/akaza-default-model/SKK-JISYO.* $(APP)/Contents/Resources/model/
 	cp -a $(APP) "$(INSTALL_DIR)/"
 
