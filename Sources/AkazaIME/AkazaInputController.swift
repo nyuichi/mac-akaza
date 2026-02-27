@@ -93,6 +93,7 @@ class AkazaInputController: IMKInputController {
             composedHiragana = text
             clearInputHistory()
             updateComposingMarkedText(client: client)
+            Self.candidateWindow.hide()
             return true
         }
 
@@ -115,12 +116,14 @@ class AkazaInputController: IMKInputController {
         guard !text.isEmpty else {
             composedHiragana = ""
             clearInputHistory()
+            Self.candidateWindow.hide()
             return true
         }
 
         client.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
         composedHiragana = ""
         clearInputHistory()
+        Self.candidateWindow.hide()
         return true
     }
 
