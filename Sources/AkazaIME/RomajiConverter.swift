@@ -10,11 +10,18 @@ class RomajiConverter {
     private var mapping: [String: String] = [:]
     private var prefixes: Set<String> = []
     private var buffer: String = ""
+    private var bufferShiftStates: [Bool] = []
 
     var pendingRomaji: String { buffer }
+    var pendingShiftStates: [Bool] { bufferShiftStates }
 
-    init() {
-        loadMapping()
+    init(mapping: [String: String]? = nil) {
+        if let mapping {
+            self.mapping = mapping
+            buildPrefixes()
+        } else {
+            loadMapping()
+        }
     }
 
     private func loadMapping() {
@@ -71,18 +78,27 @@ class RomajiConverter {
         prefixes.contains(key)
     }
 
-    func feed(_ character: Character) -> [ConversionResult] {
+    func feed(_ character: Character, isShiftPressed: Bool, shiftKatakanaEnabled: Bool) -> [ConversionResult] {
         var results: [ConversionResult] = []
         buffer.append(character)
+        bufferShiftStates.append(isShiftPressed)
 
         while !buffer.isEmpty {
-            let exact = hasExactMatch(buffer)
-            let prefix = isPrefix(buffer)
+            let lookupBuffer = lowercasedASCII(buffer)
+            let exact = hasExactMatch(lookupBuffer)
+            let prefix = isPrefix(lookupBuffer)
 
             if exact && !prefix {
                 // 完全一致かつプレフィックスでない → 変換確定
-                results.append(.converted(mapping[buffer]!))
-                buffer = ""
+                let converted = mapping[lookupBuffer]!
+                results.append(.converted(
+                    applyShiftKatakanaIfNeeded(
+                        to: converted,
+                        consumedCount: lookupBuffer.count,
+                        shiftKatakanaEnabled: shiftKatakanaEnabled
+                    )
+                ))
+                clear()
                 return results
             }
 
@@ -99,9 +115,10 @@ class RomajiConverter {
             }
 
             // 完全一致でもプレフィックスでもない → バックトラック
-            if !backtrack(&results) {
+            if !backtrack(&results, shiftKatakanaEnabled: shiftKatakanaEnabled) {
                 // バックトラックでもマッチしない → 先頭文字を passthrough
                 let first = buffer.removeFirst()
+                bufferShiftStates.removeFirst()
                 results.append(.passthrough(first))
             }
         }
@@ -109,43 +126,86 @@ class RomajiConverter {
         return results
     }
 
-    private func backtrack(_ results: inout [ConversionResult]) -> Bool {
+    private func backtrack(_ results: inout [ConversionResult], shiftKatakanaEnabled: Bool) -> Bool {
         // 先頭から最長一致を探す
         for length in stride(from: buffer.count - 1, through: 1, by: -1) {
-            let candidate = String(buffer.prefix(length))
+            let candidate = lowercasedASCII(String(buffer.prefix(length)))
             if let converted = mapping[candidate] {
-                results.append(.converted(converted))
+                results.append(.converted(
+                    applyShiftKatakanaIfNeeded(
+                        to: converted,
+                        consumedCount: length,
+                        shiftKatakanaEnabled: shiftKatakanaEnabled
+                    )
+                ))
                 buffer = String(buffer.dropFirst(length))
+                bufferShiftStates.removeFirst(length)
                 return true
             }
         }
         return false
     }
 
+    private func applyShiftKatakanaIfNeeded(to text: String, consumedCount: Int, shiftKatakanaEnabled: Bool) -> String {
+        guard shiftKatakanaEnabled else { return text }
+        guard consumedCount > 0 else { return text }
+        guard bufferShiftStates.prefix(consumedCount).allSatisfy({ $0 }) else { return text }
+        return text.applyingTransform(.hiraganaToKatakana, reverse: false) ?? text
+    }
+
+    private func lowercasedASCII(_ text: String) -> String {
+        String(text.map(lowercasedASCII))
+    }
+
+    private func lowercasedASCII(_ character: Character) -> Character {
+        guard let ascii = character.asciiValue, (65...90).contains(ascii) else {
+            return character
+        }
+        return Character(UnicodeScalar(ascii + 32))
+    }
+
     func backspace() -> Bool {
         guard !buffer.isEmpty else { return false }
         buffer.removeLast()
+        bufferShiftStates.removeLast()
         return true
     }
 
-    func flush() -> String? {
+    func flush(shiftKatakanaEnabled: Bool) -> String? {
         guard !buffer.isEmpty else { return nil }
+        let lookupBuffer = lowercasedASCII(buffer)
+
         // "n" → "ん"
-        if buffer == "n" {
-            buffer = ""
-            return "ん"
+        if lookupBuffer == "n" {
+            let converted = applyShiftKatakanaIfNeeded(
+                to: "ん",
+                consumedCount: 1,
+                shiftKatakanaEnabled: shiftKatakanaEnabled
+            )
+            clear()
+            return converted
         }
         // それ以外はそのまま返す
         let remaining = buffer
-        buffer = ""
+        clear()
         return remaining
     }
 
     func clear() {
         buffer = ""
+        bufferShiftStates = []
+    }
+
+    func setState(buffer newBuffer: String, shiftStates: [Bool]) {
+        buffer = newBuffer
+        if newBuffer.count == shiftStates.count {
+            bufferShiftStates = shiftStates
+        } else {
+            bufferShiftStates = Array(repeating: false, count: newBuffer.count)
+        }
     }
 
     func setBuffer(_ newBuffer: String) {
-        buffer = newBuffer
+        setState(buffer: newBuffer, shiftStates: Array(repeating: false, count: newBuffer.count))
     }
 }
