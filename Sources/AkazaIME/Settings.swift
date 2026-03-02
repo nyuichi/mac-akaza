@@ -12,6 +12,7 @@ class Settings {
 
     private enum DefaultsName {
         static let showCandidateWindowAfterSecondSpace = "showCandidateWindowAfterSecondSpace"
+        static let shiftKatakanaInputEnabled = "shiftKatakanaInputEnabled"
     }
 
     var punctuationStyle: PunctuationStyle {
@@ -27,6 +28,11 @@ class Settings {
     var showCandidateWindowAfterSecondSpace: Bool {
         get { defaults.bool(forKey: DefaultsName.showCandidateWindowAfterSecondSpace) }
         set { defaults.set(newValue, forKey: DefaultsName.showCandidateWindowAfterSecondSpace) }
+    }
+
+    var shiftKatakanaInputEnabled: Bool {
+        get { defaults.bool(forKey: DefaultsName.shiftKatakanaInputEnabled) }
+        set { defaults.set(newValue, forKey: DefaultsName.shiftKatakanaInputEnabled) }
     }
 
     // サジェスト候補の最大パス数。k=9 は速度が遅いため k=5 をデフォルトとする (2026-02-26)
