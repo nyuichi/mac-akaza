@@ -2,6 +2,11 @@ import Cocoa
 
 class GeneralSettingsView: NSView {
     private let punctuationPopUp = NSPopUpButton()
+    private let shiftKatakanaInputEnabled = NSButton(
+        checkboxWithTitle: "Shiftキー入力でカタカナにする",
+        target: nil,
+        action: nil
+    )
     private let showCandidateWindowAfterSecondSpace = NSButton(
         checkboxWithTitle: "候補ウィンドウを2回目のスペースで表示",
         target: nil,
@@ -44,6 +49,12 @@ class GeneralSettingsView: NSView {
         punctuationPopUp.action = #selector(punctuationStyleChanged(_:))
         addSubview(punctuationPopUp)
 
+        shiftKatakanaInputEnabled.translatesAutoresizingMaskIntoConstraints = false
+        shiftKatakanaInputEnabled.state = Settings.shared.shiftKatakanaInputEnabled ? .on : .off
+        shiftKatakanaInputEnabled.target = self
+        shiftKatakanaInputEnabled.action = #selector(shiftKatakanaInputEnabledChanged(_:))
+        addSubview(shiftKatakanaInputEnabled)
+
         showCandidateWindowAfterSecondSpace.translatesAutoresizingMaskIntoConstraints = false
         showCandidateWindowAfterSecondSpace.state = Settings.shared.showCandidateWindowAfterSecondSpace ? .on : .off
         showCandidateWindowAfterSecondSpace.target = self
@@ -59,7 +70,11 @@ class GeneralSettingsView: NSView {
             punctuationPopUp.leadingAnchor.constraint(equalTo: punctuationLabel.trailingAnchor, constant: 8),
             punctuationPopUp.widthAnchor.constraint(greaterThanOrEqualToConstant: 200),
 
-            showCandidateWindowAfterSecondSpace.topAnchor.constraint(equalTo: punctuationLabel.bottomAnchor, constant: 12),
+            shiftKatakanaInputEnabled.topAnchor.constraint(equalTo: punctuationLabel.bottomAnchor, constant: 12),
+            shiftKatakanaInputEnabled.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
+            shiftKatakanaInputEnabled.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -20),
+
+            showCandidateWindowAfterSecondSpace.topAnchor.constraint(equalTo: shiftKatakanaInputEnabled.bottomAnchor, constant: 6),
             showCandidateWindowAfterSecondSpace.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
             showCandidateWindowAfterSecondSpace.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -20)
         ])
@@ -302,6 +317,10 @@ class GeneralSettingsView: NSView {
         if let style = PunctuationStyle(rawValue: sender.indexOfSelectedItem) {
             Settings.shared.punctuationStyle = style
         }
+    }
+
+    @objc private func shiftKatakanaInputEnabledChanged(_ sender: NSButton) {
+        Settings.shared.shiftKatakanaInputEnabled = sender.state == .on
     }
 
     @objc private func showCandidateWindowAfterSecondSpaceChanged(_ sender: NSButton) {
