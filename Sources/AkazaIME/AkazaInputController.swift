@@ -17,6 +17,12 @@ class AkazaInputController: IMKInputController {
     var pendingSuggestRequestID: Int?
     var latestSuggestYomi: String?
 
+    var candidateWindowVisibilityPolicy: CandidateWindowVisibilityPolicy {
+        CandidateWindowVisibilityPolicy(
+            showOnlyAfterSecondSpace: Settings.shared.showCandidateWindowAfterSecondSpace
+        )
+    }
+
     var hasPreedit: Bool {
         switch inputState {
         case .composing:
@@ -102,7 +108,7 @@ class AkazaInputController: IMKInputController {
         composedHiragana = ""
         clearInputHistory()
         updateConvertingMarkedText(client: client)
-        showCandidateWindow(client: client)
+        updateConversionCandidateWindow(client: client, trigger: .conversionStarted)
         return true
     }
 
