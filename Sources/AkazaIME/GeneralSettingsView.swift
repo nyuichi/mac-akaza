@@ -2,6 +2,11 @@ import Cocoa
 
 class GeneralSettingsView: NSView {
     private let punctuationPopUp = NSPopUpButton()
+    private let showCandidateWindowAfterSecondSpace = NSButton(
+        checkboxWithTitle: "候補ウィンドウを2回目のスペースで表示",
+        target: nil,
+        action: nil
+    )
     private let modelVersionLabel = NSTextField(labelWithString: "読み込み中...")
     private let modelBuildTimestampLabel = NSTextField(labelWithString: "")
     private let skkJisyoStatusLabel = NSTextField(labelWithString: "確認中...")
@@ -39,16 +44,27 @@ class GeneralSettingsView: NSView {
         punctuationPopUp.action = #selector(punctuationStyleChanged(_:))
         addSubview(punctuationPopUp)
 
+        showCandidateWindowAfterSecondSpace.translatesAutoresizingMaskIntoConstraints = false
+        showCandidateWindowAfterSecondSpace.state = Settings.shared.showCandidateWindowAfterSecondSpace ? .on : .off
+        showCandidateWindowAfterSecondSpace.target = self
+        showCandidateWindowAfterSecondSpace.action = #selector(
+            showCandidateWindowAfterSecondSpaceChanged(_:))
+        addSubview(showCandidateWindowAfterSecondSpace)
+
         NSLayoutConstraint.activate([
             punctuationLabel.topAnchor.constraint(equalTo: topAnchor, constant: 20),
             punctuationLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
 
             punctuationPopUp.centerYAnchor.constraint(equalTo: punctuationLabel.centerYAnchor),
             punctuationPopUp.leadingAnchor.constraint(equalTo: punctuationLabel.trailingAnchor, constant: 8),
-            punctuationPopUp.widthAnchor.constraint(greaterThanOrEqualToConstant: 200)
+            punctuationPopUp.widthAnchor.constraint(greaterThanOrEqualToConstant: 200),
+
+            showCandidateWindowAfterSecondSpace.topAnchor.constraint(equalTo: punctuationLabel.bottomAnchor, constant: 12),
+            showCandidateWindowAfterSecondSpace.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
+            showCandidateWindowAfterSecondSpace.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -20)
         ])
 
-        let lastModelView = setupModelInfoViews(below: punctuationLabel)
+        let lastModelView = setupModelInfoViews(below: showCandidateWindowAfterSecondSpace)
         setupDictViews(below: lastModelView)
     }
 
@@ -286,6 +302,10 @@ class GeneralSettingsView: NSView {
         if let style = PunctuationStyle(rawValue: sender.indexOfSelectedItem) {
             Settings.shared.punctuationStyle = style
         }
+    }
+
+    @objc private func showCandidateWindowAfterSecondSpaceChanged(_ sender: NSButton) {
+        Settings.shared.showCandidateWindowAfterSecondSpace = sender.state == .on
     }
 
     // MARK: - Private helpers
