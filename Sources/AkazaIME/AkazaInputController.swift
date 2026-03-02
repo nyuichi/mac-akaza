@@ -4,6 +4,7 @@ import InputMethodKit
 struct ComposingSnapshot {
     let composedHiragana: String
     let romajiBuffer: String
+    let romajiShiftStates: [Bool]
 }
 
 @objc(AkazaInputController)
@@ -99,7 +100,7 @@ class AkazaInputController: IMKInputController {
         }
 
         var text = composedHiragana
-        if let flushed = romajiConverter.flush() {
+        if let flushed = romajiConverter.flush(shiftKatakanaEnabled: Settings.shared.shiftKatakanaInputEnabled) {
             text += flushed
         }
         guard !text.isEmpty else { return false }
@@ -135,7 +136,7 @@ class AkazaInputController: IMKInputController {
         guard hasPreedit else { return false }
 
         var text = composedHiragana
-        if let flushed = romajiConverter.flush() {
+        if let flushed = romajiConverter.flush(shiftKatakanaEnabled: Settings.shared.shiftKatakanaInputEnabled) {
             text += flushed
         }
         guard !text.isEmpty else {
@@ -177,7 +178,10 @@ class AkazaInputController: IMKInputController {
         } while !snapshot.romajiBuffer.isEmpty && !inputHistory.isEmpty
 
         composedHiragana = snapshot.composedHiragana
-        romajiConverter.setBuffer(snapshot.romajiBuffer)
+        romajiConverter.setState(
+            buffer: snapshot.romajiBuffer,
+            shiftStates: snapshot.romajiShiftStates
+        )
         updateComposingMarkedText(client: client)
         scheduleSuggest(client: client)
         return true
@@ -187,12 +191,13 @@ class AkazaInputController: IMKInputController {
         guard let characters = event.characters, !characters.isEmpty else {
             return false
         }
+        let isShiftPressed = event.modifierFlags.contains(.shift)
         for char in characters {
             guard let scalar = char.unicodeScalars.first?.value else { continue }
             if scalar == 0x08 { return handleBackspaceInComposing(client: client) }
             if scalar < 0x20 || scalar == 0x7F { return true }
             saveInputSnapshot()
-            processCharacter(char, scalar: scalar)
+            processCharacter(char, scalar: scalar, isShiftPressed: isShiftPressed)
         }
         updateComposingMarkedText(client: client)
         scheduleSuggest(client: client)
@@ -204,7 +209,8 @@ class AkazaInputController: IMKInputController {
     private func saveInputSnapshot() {
         let snapshot = ComposingSnapshot(
             composedHiragana: composedHiragana,
-            romajiBuffer: romajiConverter.pendingRomaji
+            romajiBuffer: romajiConverter.pendingRomaji,
+            romajiShiftStates: romajiConverter.pendingShiftStates
         )
         inputHistory.append(snapshot)
     }
@@ -228,7 +234,7 @@ class AkazaInputController: IMKInputController {
 
     func commitComposingText(client: any IMKTextInput) {
         var text = composedHiragana
-        if let flushed = romajiConverter.flush() {
+        if let flushed = romajiConverter.flush(shiftKatakanaEnabled: Settings.shared.shiftKatakanaInputEnabled) {
             text += flushed
         }
         guard !text.isEmpty else {
@@ -343,8 +349,8 @@ extension AkazaInputController {
 // MARK: - Character processing helpers
 
 private extension AkazaInputController {
-    func processCharacter(_ char: Character, scalar: UInt32) {
-        if scalar >= 0x41 && scalar <= 0x5A {
+    func processCharacter(_ char: Character, scalar: UInt32, isShiftPressed: Bool) {
+        if scalar >= 0x41 && scalar <= 0x5A && !Settings.shared.shiftKatakanaInputEnabled {
             // 大文字 ASCII: 直接入力モードへ移行
             enterDirectInputMode(char)
         } else if isDirectInputMode && scalar >= 0x21 && scalar <= 0x7E {
@@ -352,13 +358,15 @@ private extension AkazaInputController {
             composedHiragana += String(char)
         } else {
             isDirectInputMode = false
-            feedToRomajiConverter(char)
+            feedToRomajiConverter(char, isShiftPressed: isShiftPressed)
         }
     }
 
     func enterDirectInputMode(_ char: Character) {
         if !isDirectInputMode {
-            if let flushed = romajiConverter.flush() {
+            if let flushed = romajiConverter.flush(
+                shiftKatakanaEnabled: Settings.shared.shiftKatakanaInputEnabled
+            ) {
                 composedHiragana += flushed
             }
             isDirectInputMode = true
@@ -366,8 +374,12 @@ private extension AkazaInputController {
         composedHiragana += String(char)
     }
 
-    func feedToRomajiConverter(_ char: Character) {
-        let results = romajiConverter.feed(char)
+    func feedToRomajiConverter(_ char: Character, isShiftPressed: Bool) {
+        let results = romajiConverter.feed(
+            char,
+            isShiftPressed: isShiftPressed,
+            shiftKatakanaEnabled: Settings.shared.shiftKatakanaInputEnabled
+        )
         for result in results {
             switch result {
             case .converted(let hiragana):
