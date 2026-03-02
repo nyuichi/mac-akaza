@@ -55,7 +55,7 @@ extension AkazaInputController {
         inputState = .converting(conversionSession)
         composedHiragana = ""
         updateConvertingMarkedText(client: client)
-        showCandidateWindow(client: client)
+        updateConversionCandidateWindow(client: client, trigger: .conversionStarted)
         return true
     }
 
@@ -107,6 +107,10 @@ extension AkazaInputController {
 
     func showSuggestCandidateWindow(client: any IMKTextInput) {
         guard case .suggesting(let session) = inputState else { return }
+        guard candidateWindowVisibilityPolicy.shouldShowWindow(for: .composingSuggestion) else {
+            Self.candidateWindow.hide()
+            return
+        }
 
         let allSurfaces = session.paths.map { path in
             path.segments.map { $0.first?.surface ?? "" }.joined()

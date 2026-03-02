@@ -50,7 +50,7 @@ extension AkazaInputController {
         session.nextCandidate()
         inputState = .converting(session)
         updateConvertingMarkedText(client: client)
-        showCandidateWindow(client: client)
+        updateConversionCandidateWindow(client: client, trigger: .conversionNavigation)
         return true
     }
 
@@ -59,7 +59,7 @@ extension AkazaInputController {
         session.previousCandidate()
         inputState = .converting(session)
         updateConvertingMarkedText(client: client)
-        showCandidateWindow(client: client)
+        updateConversionCandidateWindow(client: client, trigger: .conversionNavigation)
         return true
     }
 
@@ -68,7 +68,7 @@ extension AkazaInputController {
         session.focusPreviousClause()
         inputState = .converting(session)
         updateConvertingMarkedText(client: client)
-        showCandidateWindow(client: client)
+        updateConversionCandidateWindow(client: client, trigger: .conversionNavigation)
         return true
     }
 
@@ -77,7 +77,7 @@ extension AkazaInputController {
         session.focusNextClause()
         inputState = .converting(session)
         updateConvertingMarkedText(client: client)
-        showCandidateWindow(client: client)
+        updateConversionCandidateWindow(client: client, trigger: .conversionNavigation)
         return true
     }
 
@@ -119,7 +119,7 @@ extension AkazaInputController {
         newSession.focusedClauseIndex = min(focusedIndex, newSession.clauses.count - 1)
         inputState = .converting(newSession)
         updateConvertingMarkedText(client: client)
-        showCandidateWindow(client: client)
+        updateConversionCandidateWindow(client: client, trigger: .conversionNavigation)
         return true
     }
 
@@ -135,13 +135,21 @@ extension AkazaInputController {
         newSession.focusedClauseIndex = min(focusedIndex, newSession.clauses.count - 1)
         inputState = .converting(newSession)
         updateConvertingMarkedText(client: client)
-        showCandidateWindow(client: client)
+        updateConversionCandidateWindow(client: client, trigger: .conversionNavigation)
         return true
     }
 }
 
 // MARK: - Marked text display
 extension AkazaInputController {
+    func updateConversionCandidateWindow(client: any IMKTextInput, trigger: CandidateWindowTrigger) {
+        if candidateWindowVisibilityPolicy.shouldShowWindow(for: trigger) {
+            showCandidateWindow(client: client)
+        } else {
+            Self.candidateWindow.hide()
+        }
+    }
+
     func updateComposingMarkedText(client: any IMKTextInput) {
         let preedit = composedHiragana + romajiConverter.pendingRomaji
         if preedit.isEmpty {
