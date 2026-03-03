@@ -195,7 +195,10 @@ class AkazaInputController: IMKInputController {
                 case .pending:
                     break
                 case .passthrough(let character):
-                    composedHiragana += String(character)
+                    composedHiragana += SymbolWidthConverter.normalize(
+                        String(character),
+                        style: Settings.shared.symbolStyle
+                    )
                 }
             }
         }
