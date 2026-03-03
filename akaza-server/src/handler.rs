@@ -49,6 +49,15 @@ impl<U: SystemUnigramLM, B: SystemBigramLM, KD: KanaKanjiDict> Handler<U, B, KD>
             }
         };
 
+        if request.jsonrpc != "2.0" {
+            let resp = Response::error(
+                request.id,
+                INVALID_PARAMS,
+                format!("Unsupported JSON-RPC version: {}", request.jsonrpc),
+            );
+            return serde_json::to_string(&resp).unwrap();
+        }
+
         info!("Received request: method={}", request.method);
 
         let response = match request.method.as_str() {
@@ -83,9 +92,26 @@ impl<U: SystemUnigramLM, B: SystemBigramLM, KD: KanaKanjiDict> Handler<U, B, KD>
             }
         };
 
-        let force_ranges: Option<Vec<Range<usize>>> = params
-            .force_ranges
-            .map(|ranges| ranges.into_iter().map(|r| r[0]..r[1]).collect());
+        let force_ranges: Option<Vec<Range<usize>>> = match params.force_ranges {
+            None => None,
+            Some(ranges) => {
+                let mut result = Vec::with_capacity(ranges.len());
+                for r in ranges {
+                    if r.len() != 2 {
+                        return Response::error(
+                            request.id.clone(),
+                            INVALID_PARAMS,
+                            format!(
+                                "force_ranges: each range must have exactly 2 elements, got {}",
+                                r.len()
+                            ),
+                        );
+                    }
+                    result.push(r[0]..r[1]);
+                }
+                Some(result)
+            }
+        };
 
         match self.engine.convert(&params.yomi, force_ranges.as_deref()) {
             Ok(clauses) => {

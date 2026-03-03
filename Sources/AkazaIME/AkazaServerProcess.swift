@@ -11,6 +11,7 @@ class AkazaServerProcess {
     private var shouldRestart = true
 
     var onRestart: (() -> Void)?
+    private var terminationObserver: NSObjectProtocol?
 
     func skkJisyoLPath() -> URL? {
         guard let xdgData = ProcessInfo.processInfo.environment["XDG_DATA_HOME"]
@@ -33,7 +34,13 @@ class AkazaServerProcess {
 
         NSLog("AkazaIME: SKK-JISYO.L not found, downloading...")
         let dirURL = dest.deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: dirURL, withIntermediateDirectories: true)
+        do {
+            try FileManager.default.createDirectory(at: dirURL, withIntermediateDirectories: true)
+        } catch {
+            NSLog("AkazaIME: failed to create directory \(dirURL.path): \(error)")
+            completion()
+            return
+        }
 
         guard let url = URL(string: skkJisyoLURL) else {
             completion()
@@ -106,12 +113,14 @@ class AkazaServerProcess {
             NSLog("AkazaIME: failed to start akaza-server: \(error)")
         }
 
-        NotificationCenter.default.addObserver(
-            forName: NSApplication.willTerminateNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            self?.stop()
+        if terminationObserver == nil {
+            terminationObserver = NotificationCenter.default.addObserver(
+                forName: NSApplication.willTerminateNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                self?.stop()
+            }
         }
     }
 

@@ -9,7 +9,6 @@ pub const INTERNAL_ERROR: i64 = -32603;
 
 #[derive(Debug, Deserialize)]
 pub struct Request {
-    #[allow(dead_code)]
     pub jsonrpc: String,
     pub id: Value,
     pub method: String,
