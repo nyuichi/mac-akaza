@@ -17,6 +17,11 @@ class AkazaInputController: IMKInputController {
     var pendingSuggestRequestID: Int?
     var latestSuggestYomi: String?
 
+    // 大文字 ASCII を入力したときに true になる直接入力モード。
+    // このモードでは後続の printable ASCII もローマ字変換せず preedit に積み、
+    // スペースで変換せずそのままコミットする（例: "Java" → "Java"）。
+    var isDirectInputMode = false
+
     var hasPreedit: Bool {
         switch inputState {
         case .composing:
@@ -89,6 +94,16 @@ class AkazaInputController: IMKInputController {
         }
         guard !text.isEmpty else { return false }
 
+        // 直接入力モードではかな変換せずそのままコミット（例: "Java" → "Java"）
+        if isDirectInputMode {
+            client.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
+            composedHiragana = ""
+            isDirectInputMode = false
+            clearInputHistory()
+            Self.candidateWindow.hide()
+            return true
+        }
+
         guard let result = akazaClient.convertSync(yomi: text), !result.isEmpty else {
             composedHiragana = text
             clearInputHistory()
@@ -115,6 +130,7 @@ class AkazaInputController: IMKInputController {
         }
         guard !text.isEmpty else {
             composedHiragana = ""
+            isDirectInputMode = false
             clearInputHistory()
             Self.candidateWindow.hide()
             return true
@@ -122,6 +138,7 @@ class AkazaInputController: IMKInputController {
 
         client.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
         composedHiragana = ""
+        isDirectInputMode = false
         clearInputHistory()
         Self.candidateWindow.hide()
         return true
@@ -130,6 +147,7 @@ class AkazaInputController: IMKInputController {
     private func handleEscapeInComposing(client: any IMKTextInput) -> Bool {
         guard hasPreedit else { return false }
         composedHiragana = ""
+        isDirectInputMode = false
         romajiConverter.clear()
         clearInputHistory()
         updateComposingMarkedText(client: client)
@@ -160,29 +178,10 @@ class AkazaInputController: IMKInputController {
         }
         for char in characters {
             guard let scalar = char.unicodeScalars.first?.value else { continue }
-            // Ctrl+H (BS = 0x08): treat as backspace
-            if scalar == 0x08 {
-                return handleBackspaceInComposing(client: client)
-            }
-            // Skip other control characters (e.g. Ctrl+P = 0x10, DEL = 0x7F)
-            if scalar < 0x20 || scalar == 0x7F {
-                return true
-            }
-
-            // Save current state before processing input
+            if scalar == 0x08 { return handleBackspaceInComposing(client: client) }
+            if scalar < 0x20 || scalar == 0x7F { return true }
             saveInputSnapshot()
-
-            let results = romajiConverter.feed(char)
-            for result in results {
-                switch result {
-                case .converted(let hiragana):
-                    composedHiragana += applyPunctuationStyle(hiragana)
-                case .pending:
-                    break
-                case .passthrough(let character):
-                    composedHiragana += String(character)
-                }
-            }
+            processCharacter(char, scalar: scalar)
         }
         updateComposingMarkedText(client: client)
         scheduleSuggest(client: client)
@@ -223,11 +222,13 @@ class AkazaInputController: IMKInputController {
         }
         guard !text.isEmpty else {
             composedHiragana = ""
+            isDirectInputMode = false
             clearInputHistory()
             return
         }
         client.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
         composedHiragana = ""
+        isDirectInputMode = false
         clearInputHistory()
     }
 
@@ -243,6 +244,7 @@ class AkazaInputController: IMKInputController {
         cancelPendingSuggest()
         inputState = .composing
         composedHiragana = ""
+        isDirectInputMode = false
         romajiConverter.clear()
         clearInputHistory()
         Self.candidateWindow.hide()
@@ -316,5 +318,46 @@ class AkazaInputController: IMKInputController {
         }
         resetToComposing()
         super.deactivateServer(sender)
+    }
+}
+
+// MARK: - Character processing helpers
+
+private extension AkazaInputController {
+    func processCharacter(_ char: Character, scalar: UInt32) {
+        if scalar >= 0x41 && scalar <= 0x5A {
+            // 大文字 ASCII: 直接入力モードへ移行
+            enterDirectInputMode(char)
+        } else if isDirectInputMode && scalar >= 0x21 && scalar <= 0x7E {
+            // 直接入力モード中の printable ASCII: ローマ字変換せず preedit に積む
+            composedHiragana += String(char)
+        } else {
+            isDirectInputMode = false
+            feedToRomajiConverter(char)
+        }
+    }
+
+    func enterDirectInputMode(_ char: Character) {
+        if !isDirectInputMode {
+            if let flushed = romajiConverter.flush() {
+                composedHiragana += flushed
+            }
+            isDirectInputMode = true
+        }
+        composedHiragana += String(char)
+    }
+
+    func feedToRomajiConverter(_ char: Character) {
+        let results = romajiConverter.feed(char)
+        for result in results {
+            switch result {
+            case .converted(let hiragana):
+                composedHiragana += applyPunctuationStyle(hiragana)
+            case .pending:
+                break
+            case .passthrough(let character):
+                composedHiragana += String(character)
+            }
+        }
     }
 }
