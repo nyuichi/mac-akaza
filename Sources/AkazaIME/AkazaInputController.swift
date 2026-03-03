@@ -250,41 +250,6 @@ class AkazaInputController: IMKInputController {
         Self.candidateWindow.hide()
     }
 
-    // MARK: - Suggest scheduling
-
-    func scheduleSuggest(client: any IMKTextInput) {
-        cancelPendingSuggest()
-
-        let yomi = composedHiragana
-        guard !yomi.isEmpty else {
-            latestSuggestYomi = nil
-            Self.candidateWindow.hide()
-            return
-        }
-        guard yomi != latestSuggestYomi else { return }
-
-        latestSuggestYomi = yomi
-        let requestID = akazaClient.convertKBestAsync(yomi: yomi, maxPaths: Settings.shared.suggestMaxPaths) { [weak self] paths in
-            guard let self = self else { return }
-            guard case .composing = self.inputState else { return }
-            guard let paths = paths, !paths.isEmpty else { return }
-            guard self.composedHiragana == yomi else { return }
-
-            let session = SuggestSession(originalHiragana: yomi, paths: paths)
-            self.inputState = .suggesting(session)
-            self.updateSuggestingMarkedText(client: client)
-            self.showSuggestCandidateWindow(client: client)
-        }
-        pendingSuggestRequestID = requestID
-    }
-
-    func cancelPendingSuggest() {
-        if let id = pendingSuggestRequestID {
-            akazaClient.cancelRequest(id: id)
-            pendingSuggestRequestID = nil
-        }
-    }
-
     // MARK: - Punctuation style
 
     private func applyPunctuationStyle(_ text: String) -> String {
@@ -318,6 +283,49 @@ class AkazaInputController: IMKInputController {
         }
         resetToComposing()
         super.deactivateServer(sender)
+    }
+}
+
+// MARK: - Suggest scheduling
+
+extension AkazaInputController {
+    func scheduleSuggest(client: any IMKTextInput) {
+        cancelPendingSuggest()
+
+        // 直接入力モード中はサジェストを抑制する
+        guard !isDirectInputMode else {
+            Self.candidateWindow.hide()
+            return
+        }
+
+        let yomi = composedHiragana
+        guard !yomi.isEmpty else {
+            latestSuggestYomi = nil
+            Self.candidateWindow.hide()
+            return
+        }
+        guard yomi != latestSuggestYomi else { return }
+
+        latestSuggestYomi = yomi
+        let requestID = akazaClient.convertKBestAsync(yomi: yomi, maxPaths: Settings.shared.suggestMaxPaths) { [weak self] paths in
+            guard let self = self else { return }
+            guard case .composing = self.inputState else { return }
+            guard let paths = paths, !paths.isEmpty else { return }
+            guard self.composedHiragana == yomi else { return }
+
+            let session = SuggestSession(originalHiragana: yomi, paths: paths)
+            self.inputState = .suggesting(session)
+            self.updateSuggestingMarkedText(client: client)
+            self.showSuggestCandidateWindow(client: client)
+        }
+        pendingSuggestRequestID = requestID
+    }
+
+    func cancelPendingSuggest() {
+        if let id = pendingSuggestRequestID {
+            akazaClient.cancelRequest(id: id)
+            pendingSuggestRequestID = nil
+        }
     }
 }
 
