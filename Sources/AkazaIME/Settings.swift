@@ -5,6 +5,11 @@ enum PunctuationStyle: Int {
     case commaPeriod = 1 // ，．
 }
 
+enum SymbolStyle: Int {
+    case fullWidth = 0
+    case halfWidth = 1
+}
+
 class Settings {
     static let shared = Settings()
 
@@ -18,6 +23,11 @@ class Settings {
     var punctuationStyle: PunctuationStyle {
         get { PunctuationStyle(rawValue: defaults.integer(forKey: "punctuationStyle")) ?? .kutouten }
         set { defaults.set(newValue.rawValue, forKey: "punctuationStyle") }
+    }
+
+    var symbolStyle: SymbolStyle {
+        get { SymbolStyle(rawValue: defaults.integer(forKey: "symbolStyle")) ?? .fullWidth }
+        set { defaults.set(newValue.rawValue, forKey: "symbolStyle") }
     }
 
     var additionalDictPaths: [String] {
