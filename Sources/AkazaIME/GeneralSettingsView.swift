@@ -2,6 +2,7 @@ import Cocoa
 
 class GeneralSettingsView: NSView {
     private let punctuationPopUp = NSPopUpButton()
+    private let symbolPopUp = NSPopUpButton()
     private let shiftKatakanaInputEnabled = NSButton(
         checkboxWithTitle: "Shiftキー入力でカタカナにする",
         target: nil,
@@ -39,6 +40,10 @@ class GeneralSettingsView: NSView {
         punctuationLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(punctuationLabel)
 
+        let symbolLabel = NSTextField(labelWithString: "記号スタイル:")
+        symbolLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(symbolLabel)
+
         punctuationPopUp.translatesAutoresizingMaskIntoConstraints = false
         punctuationPopUp.addItems(withTitles: [
             "「、。」（標準）",
@@ -48,6 +53,16 @@ class GeneralSettingsView: NSView {
         punctuationPopUp.target = self
         punctuationPopUp.action = #selector(punctuationStyleChanged(_:))
         addSubview(punctuationPopUp)
+
+        symbolPopUp.translatesAutoresizingMaskIntoConstraints = false
+        symbolPopUp.addItems(withTitles: [
+            "全角（！？／＠）",
+            "半角（!?/@）"
+        ])
+        symbolPopUp.selectItem(at: Settings.shared.symbolStyle.rawValue)
+        symbolPopUp.target = self
+        symbolPopUp.action = #selector(symbolStyleChanged(_:))
+        addSubview(symbolPopUp)
 
         shiftKatakanaInputEnabled.translatesAutoresizingMaskIntoConstraints = false
         shiftKatakanaInputEnabled.state = Settings.shared.shiftKatakanaInputEnabled ? .on : .off
@@ -70,7 +85,14 @@ class GeneralSettingsView: NSView {
             punctuationPopUp.leadingAnchor.constraint(equalTo: punctuationLabel.trailingAnchor, constant: 8),
             punctuationPopUp.widthAnchor.constraint(greaterThanOrEqualToConstant: 200),
 
-            shiftKatakanaInputEnabled.topAnchor.constraint(equalTo: punctuationLabel.bottomAnchor, constant: 12),
+            symbolLabel.topAnchor.constraint(equalTo: punctuationLabel.bottomAnchor, constant: 12),
+            symbolLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
+
+            symbolPopUp.centerYAnchor.constraint(equalTo: symbolLabel.centerYAnchor),
+            symbolPopUp.leadingAnchor.constraint(equalTo: symbolLabel.trailingAnchor, constant: 8),
+            symbolPopUp.widthAnchor.constraint(greaterThanOrEqualToConstant: 200),
+
+            shiftKatakanaInputEnabled.topAnchor.constraint(equalTo: symbolLabel.bottomAnchor, constant: 12),
             shiftKatakanaInputEnabled.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
             shiftKatakanaInputEnabled.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -20),
 
@@ -316,6 +338,12 @@ class GeneralSettingsView: NSView {
     @objc private func punctuationStyleChanged(_ sender: NSPopUpButton) {
         if let style = PunctuationStyle(rawValue: sender.indexOfSelectedItem) {
             Settings.shared.punctuationStyle = style
+        }
+    }
+
+    @objc private func symbolStyleChanged(_ sender: NSPopUpButton) {
+        if let style = SymbolStyle(rawValue: sender.indexOfSelectedItem) {
+            Settings.shared.symbolStyle = style
         }
     }
 
