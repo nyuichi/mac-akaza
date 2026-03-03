@@ -24,7 +24,8 @@ class Settings {
     var suggestMaxPaths: Int {
         get {
             let value = defaults.integer(forKey: "suggestMaxPaths")
-            return value > 0 ? value : 5
+            if value <= 0 { return 5 }
+            return min(value, 20)
         }
         set { defaults.set(newValue, forKey: "suggestMaxPaths") }
     }

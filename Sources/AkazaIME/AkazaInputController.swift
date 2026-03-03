@@ -159,7 +159,7 @@ class AkazaInputController: IMKInputController {
             return false
         }
         for char in characters {
-            let scalar = char.unicodeScalars.first!.value
+            guard let scalar = char.unicodeScalars.first?.value else { continue }
             // Ctrl+H (BS = 0x08): treat as backspace
             if scalar == 0x08 {
                 return handleBackspaceInComposing(client: client)

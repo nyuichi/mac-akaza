@@ -90,10 +90,10 @@ fn main() -> Result<()> {
     let bigram_lm = MarisaSystemBigramLM::load(&format!("{}/bigram.model", model_dir))?;
 
     let basedir = xdg::BaseDirectories::with_prefix("akaza")?;
-    let dict_path = basedir
-        .place_data_file(Path::new("SKK-JISYO.user"))?
+    let dict_path_buf = basedir.place_data_file(Path::new("SKK-JISYO.user"))?;
+    let dict_path = dict_path_buf
         .to_str()
-        .unwrap()
+        .ok_or_else(|| anyhow::anyhow!("dict path contains non-UTF-8 characters"))?
         .to_string();
 
     let mut handler =

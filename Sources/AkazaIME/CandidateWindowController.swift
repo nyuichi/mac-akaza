@@ -38,26 +38,7 @@ class CandidateWindowController {
     }
 
     func show(candidates: [ConvertCandidate], selectedIndex: Int, cursorRect: NSRect) {
-        clearLabels()
-
-        guard !candidates.isEmpty else {
-            hide()
-            return
-        }
-
-        let pageSize = maxDisplayCount
-        let currentPage = selectedIndex / pageSize
-        let pageStart = currentPage * pageSize
-        let pageEnd = min(pageStart + pageSize, candidates.count)
-        let totalPages = (candidates.count + pageSize - 1) / pageSize
-
-        addCandidateLabels(candidates: candidates, pageStart: pageStart, pageEnd: pageEnd, selectedIndex: selectedIndex)
-
-        if totalPages > 1 {
-            addPageIndicator(currentPage: currentPage, totalPages: totalPages)
-        }
-
-        positionPanel(cursorRect: cursorRect)
+        showSurfaces(candidates.map { $0.surface }, selectedIndex: selectedIndex, cursorRect: cursorRect, stablePosition: false)
     }
 
     private func clearLabels() {
@@ -68,13 +49,10 @@ class CandidateWindowController {
         candidateLabels.removeAll()
     }
 
-    private func addCandidateLabels(
-        candidates: [ConvertCandidate], pageStart: Int, pageEnd: Int, selectedIndex: Int
-    ) {
+    private func addCandidateLabels(surfaces: [String], pageStart: Int, pageEnd: Int, selectedIndex: Int) {
         for idx in pageStart..<pageEnd {
-            let candidate = candidates[idx]
             let displayNumber = idx - pageStart + 1
-            let label = NSTextField(labelWithString: "\(displayNumber). \(candidate.surface)")
+            let label = NSTextField(labelWithString: "\(displayNumber). \(surfaces[idx])")
             label.font = NSFont.systemFont(ofSize: 14)
             label.translatesAutoresizingMaskIntoConstraints = false
 
@@ -91,6 +69,29 @@ class CandidateWindowController {
             stackView.addArrangedSubview(label)
             candidateLabels.append(label)
         }
+    }
+
+    private func showSurfaces(_ surfaces: [String], selectedIndex: Int, cursorRect: NSRect, stablePosition: Bool) {
+        clearLabels()
+
+        guard !surfaces.isEmpty else {
+            hide()
+            return
+        }
+
+        let pageSize = maxDisplayCount
+        let currentPage = selectedIndex / pageSize
+        let pageStart = currentPage * pageSize
+        let pageEnd = min(pageStart + pageSize, surfaces.count)
+        let totalPages = (surfaces.count + pageSize - 1) / pageSize
+
+        addCandidateLabels(surfaces: surfaces, pageStart: pageStart, pageEnd: pageEnd, selectedIndex: selectedIndex)
+
+        if totalPages > 1 {
+            addPageIndicator(currentPage: currentPage, totalPages: totalPages)
+        }
+
+        positionPanel(cursorRect: cursorRect, stablePosition: stablePosition)
     }
 
     private func addPageIndicator(currentPage: Int, totalPages: Int) {
@@ -146,44 +147,7 @@ class CandidateWindowController {
     }
 
     func showSuggestions(suggestions: [String], selectedIndex: Int, cursorRect: NSRect) {
-        clearLabels()
-
-        guard !suggestions.isEmpty else {
-            hide()
-            return
-        }
-
-        let pageSize = maxDisplayCount
-        let currentPage = selectedIndex / pageSize
-        let pageStart = currentPage * pageSize
-        let pageEnd = min(pageStart + pageSize, suggestions.count)
-        let totalPages = (suggestions.count + pageSize - 1) / pageSize
-
-        for idx in pageStart..<pageEnd {
-            let displayNumber = idx - pageStart + 1
-            let label = NSTextField(labelWithString: "\(displayNumber). \(suggestions[idx])")
-            label.font = NSFont.systemFont(ofSize: 14)
-            label.translatesAutoresizingMaskIntoConstraints = false
-
-            if idx == selectedIndex {
-                label.backgroundColor = NSColor.selectedContentBackgroundColor
-                label.textColor = NSColor.white
-                label.drawsBackground = true
-            } else {
-                label.backgroundColor = .clear
-                label.textColor = NSColor.labelColor
-                label.drawsBackground = false
-            }
-
-            stackView.addArrangedSubview(label)
-            candidateLabels.append(label)
-        }
-
-        if totalPages > 1 {
-            addPageIndicator(currentPage: currentPage, totalPages: totalPages)
-        }
-
-        positionPanel(cursorRect: cursorRect, stablePosition: true)
+        showSurfaces(suggestions, selectedIndex: selectedIndex, cursorRect: cursorRect, stablePosition: true)
     }
 
     func hide() {

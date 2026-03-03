@@ -130,15 +130,7 @@ class JSONRPCClient {
 
     func convertKBestAsync(yomi: String, maxPaths: Int, completion: @escaping ([KBestPath]?) -> Void) -> Int {
         let params: [String: Any] = ["yomi": yomi, "k": maxPaths]
-
-        let requestID = requestQueue.sync { () -> Int in
-            let id = self.nextID
-            self.nextID += 1
-            return id
-        }
-
-        lock.lock()
-        pendingRequests[requestID] = { data in
+        return sendRequest(method: "convert_k_best", params: params) { data in
             guard let data = data else {
                 DispatchQueue.main.async { completion(nil) }
                 return
@@ -151,12 +143,26 @@ class JSONRPCClient {
                 DispatchQueue.main.async { completion(nil) }
             }
         }
-        lock.unlock()
+    }
+
+    func cancelRequest(id: Int) {
+        _ = lock.withLock { pendingRequests.removeValue(forKey: id) }
+    }
+
+    @discardableResult
+    private func sendRequest(method: String, params: [String: Any], completion: @escaping (Data?) -> Void) -> Int {
+        let requestID = requestQueue.sync { () -> Int in
+            let id = self.nextID
+            self.nextID += 1
+            return id
+        }
+
+        lock.withLock { pendingRequests[requestID] = completion }
 
         let request: [String: Any] = [
             "jsonrpc": "2.0",
             "id": requestID,
-            "method": "convert_k_best",
+            "method": method,
             "params": params
         ]
 
@@ -180,59 +186,19 @@ class JSONRPCClient {
         return requestID
     }
 
-    func cancelRequest(id: Int) {
-        lock.lock()
-        pendingRequests.removeValue(forKey: id)
-        lock.unlock()
-    }
-
     private func sendRequestSync(method: String, params: [String: Any]) -> Data? {
         let semaphore = DispatchSemaphore(value: 0)
         var resultData: Data?
 
-        let requestID = requestQueue.sync { () -> Int in
-            let id = self.nextID
-            self.nextID += 1
-            return id
-        }
-
-        lock.lock()
-        pendingRequests[requestID] = { data in
+        let requestID = sendRequest(method: method, params: params) { data in
             resultData = data
             semaphore.signal()
-        }
-        lock.unlock()
-
-        let request: [String: Any] = [
-            "jsonrpc": "2.0",
-            "id": requestID,
-            "method": method,
-            "params": params
-        ]
-
-        requestQueue.async { [weak self] in
-            guard let self = self,
-                  let stdin = self.serverProcess.stdinPipe else {
-                self?.completePending(id: requestID, data: nil)
-                return
-            }
-
-            do {
-                var data = try JSONSerialization.data(withJSONObject: request)
-                data.append(0x0A) // newline
-                stdin.fileHandleForWriting.write(data)
-            } catch {
-                NSLog("AkazaIME: failed to serialize JSON-RPC request: \(error)")
-                self.completePending(id: requestID, data: nil)
-            }
         }
 
         let timeout = semaphore.wait(timeout: .now() + 1.0)
         if timeout == .timedOut {
             NSLog("AkazaIME: JSON-RPC request timed out (id=\(requestID))")
-            lock.lock()
-            pendingRequests.removeValue(forKey: requestID)
-            lock.unlock()
+            _ = lock.withLock { pendingRequests.removeValue(forKey: requestID) }
             return nil
         }
 
@@ -261,18 +227,16 @@ class JSONRPCClient {
     }
 
     private func completePending(id: Int, data: Data?) {
-        lock.lock()
-        let callback = pendingRequests.removeValue(forKey: id)
-        lock.unlock()
+        let callback = lock.withLock { pendingRequests.removeValue(forKey: id) }
         callback?(data)
     }
 
     private func failAllPending() {
-        lock.lock()
-        let callbacks = pendingRequests
-        pendingRequests.removeAll()
-        lock.unlock()
-
+        let callbacks = lock.withLock { () -> [Int: (Data?) -> Void] in
+            let all = pendingRequests
+            pendingRequests.removeAll()
+            return all
+        }
         for (_, callback) in callbacks {
             callback(nil)
         }
