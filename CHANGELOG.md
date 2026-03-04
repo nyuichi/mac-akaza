@@ -1,5 +1,8 @@
 # Changelog
 
+## [v2026.304.0](https://github.com/akaza-im/mac-akaza/compare/v2026.303.0...v2026.304.0) - 2026-03-04
+- fix: converting 状態で Backspace を押すと空文字がコミットされるバグを修正 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/61
+
 ## [v2026.303.0](https://github.com/akaza-im/mac-akaza/commits/v2026.303.0) - 2026-03-03
 - Rewrite IME frontend in Swift (Phase 1) by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/2
 - Add akaza-server (Rust JSON-RPC kana-kanji conversion server) by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/3
