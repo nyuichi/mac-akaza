@@ -47,14 +47,7 @@ class AkazaInputController: IMKInputController {
         NSLog("AkazaIME: keyCode=\(keyCode) characters=\(event.characters ?? "")")
 
         if isBackspaceEvent(event, keyCode: keyCode) {
-            switch inputState {
-            case .composing:
-                return handleBackspaceInComposing(client: client)
-            case .suggesting:
-                return handleSuggestingState(event: event, keyCode: 51, client: client)
-            case .converting:
-                return handleConvertingState(event: event, keyCode: 51, client: client)
-            }
+            return handleBackspaceEvent(event: event, client: client)
         }
 
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
@@ -71,12 +64,6 @@ class AkazaInputController: IMKInputController {
         case .converting:
             return handleConvertingState(event: event, keyCode: keyCode, client: client)
         }
-    }
-
-    private func isBackspaceEvent(_ event: NSEvent, keyCode: UInt16) -> Bool {
-        if keyCode == 51 { return true }
-        guard let scalar = event.characters?.unicodeScalars.first?.value else { return false }
-        return scalar == 0x08 || scalar == 0x7F
     }
 
     // MARK: - Composing state
@@ -185,19 +172,6 @@ class AkazaInputController: IMKInputController {
 
         composedHiragana = snapshot.composedHiragana
         romajiConverter.setBuffer(snapshot.romajiBuffer)
-        updateComposingMarkedText(client: client)
-        scheduleSuggest(client: client)
-        return true
-    }
-
-    private func handleBackspaceWithoutHistoryInComposing(client: any IMKTextInput) -> Bool {
-        if romajiConverter.backspace() {
-            updateComposingMarkedText(client: client)
-            scheduleSuggest(client: client)
-            return true
-        }
-        guard !composedHiragana.isEmpty else { return false }
-        composedHiragana.removeLast()
         updateComposingMarkedText(client: client)
         scheduleSuggest(client: client)
         return true

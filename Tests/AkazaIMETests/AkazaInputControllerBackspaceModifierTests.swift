@@ -4,7 +4,7 @@ import XCTest
 
 @testable import AkazaIME
 
-final class AkazaInputControllerBackspaceModifierTests: XCTestCase {
+final class BackspaceHandlingTests: XCTestCase {
     func testControlModifiedBackspaceIsHandledAsBackspaceInComposing() {
         assertBackspaceHandledInComposing(characters: "\u{7F}", keyCode: 51)
     }
@@ -67,11 +67,7 @@ final class AkazaInputControllerBackspaceModifierTests: XCTestCase {
         controller.inputState = .composing
         controller.composedHiragana = "x"
         controller.inputHistory = [
-            ComposingSnapshot(
-                composedHiragana: "",
-                romajiBuffer: "",
-                romajiShiftStates: []
-            )
+            ComposingSnapshot(composedHiragana: "", romajiBuffer: "")
         ]
 
         let event = makeKeyDownEvent(
