@@ -5,18 +5,21 @@ import XCTest
 @testable import AkazaIME
 
 final class BackspaceHandlingTests: XCTestCase {
+    // Ctrl+Backspace（keyCode=51, chars=0x7F）を composing 中にバックスペースとして処理する
     func testControlModifiedBackspaceIsHandledAsBackspaceInComposing() {
         assertBackspaceHandledInComposing(characters: "\u{7F}", keyCode: 51)
     }
 
+    // Ctrl+H（keyCode=4, chars=0x08）を composing 中にバックスペースとして処理する
     func testCtrlHCharacterIsHandledAsBackspaceInComposing() {
         assertBackspaceHandledInComposing(characters: "\u{08}", keyCode: 4)
     }
 
+    // converting 中に backspace を押すと最後の1文字だけ削除されて composing に戻る
     func testBackspaceInConvertingDeletesOnlyLastCharacter() {
         let client = MockTextInput()
         guard let controller = AkazaInputController(server: nil, delegate: nil, client: nil) else {
-            XCTFail("failed to create AkazaInputController")
+            XCTFail("AkazaInputController の生成に失敗しました")
             return
         }
 
@@ -29,13 +32,15 @@ final class BackspaceHandlingTests: XCTestCase {
         XCTAssertTrue(handledBackspace)
         XCTAssertEqual(controller.inputStateDescription, "composing")
         XCTAssertEqual(controller.composedHiragana, "p")
+        // 空文字がコミットされていないこと（issue #60 の再発防止）
         XCTAssertEqual(client.insertedTexts.count, 0)
     }
 
+    // ひらがな・ASCII 混在の originalHiragana でも末尾1文字が正しく削除される
     func testBackspaceInConvertingHandlesMixedText() {
         let client = MockTextInput()
         guard let controller = AkazaInputController(server: nil, delegate: nil, client: nil) else {
-            XCTFail("failed to create AkazaInputController")
+            XCTFail("AkazaInputController の生成に失敗しました")
             return
         }
 
@@ -50,6 +55,70 @@ final class BackspaceHandlingTests: XCTestCase {
         XCTAssertEqual(controller.composedHiragana, "lえ")
     }
 
+    // Cmd+Backspace は IME が処理せず preedit をコミットしてシステムに渡す
+    func testCmdBackspaceCommitsPreeditAndPassesToSystem() {
+        let client = MockTextInput()
+        guard let controller = AkazaInputController(server: nil, delegate: nil, client: nil) else {
+            XCTFail("AkazaInputController の生成に失敗しました")
+            return
+        }
+
+        controller.inputState = .composing
+        controller.composedHiragana = "あ"
+
+        let event = makeKeyDownEvent(characters: "\u{7F}", keyCode: 51, flags: [.command])
+        let handled = controller.handle(event, client: client)
+
+        // IME は処理しない
+        XCTAssertFalse(handled)
+        // preedit はコミットされる
+        XCTAssertEqual(client.insertedTexts, ["あ"])
+    }
+
+    // Option+Backspace は IME が処理せず preedit をコミットしてシステムに渡す
+    func testOptionBackspaceCommitsPreeditAndPassesToSystem() {
+        let client = MockTextInput()
+        guard let controller = AkazaInputController(server: nil, delegate: nil, client: nil) else {
+            XCTFail("AkazaInputController の生成に失敗しました")
+            return
+        }
+
+        controller.inputState = .composing
+        controller.composedHiragana = "あ"
+
+        let event = makeKeyDownEvent(characters: "\u{7F}", keyCode: 51, flags: [.option])
+        let handled = controller.handle(event, client: client)
+
+        // IME は処理しない
+        XCTAssertFalse(handled)
+        // preedit はコミットされる
+        XCTAssertEqual(client.insertedTexts, ["あ"])
+    }
+
+    // converting → composing に戻った後、続けて backspace を押すと
+    // inputHistory なしのパス（handleBackspaceWithoutHistoryInComposing）で1文字削除される
+    func testBackspaceAfterReturningFromConverting() {
+        let client = MockTextInput()
+        guard let controller = AkazaInputController(server: nil, delegate: nil, client: nil) else {
+            XCTFail("AkazaInputController の生成に失敗しました")
+            return
+        }
+
+        controller.inputState = .converting(makeConversionSession(original: "ab"))
+
+        let backspace = makeKeyDownEvent(characters: "\u{7F}", keyCode: 51)
+
+        // 1回目: converting → composing、末尾 "b" を削除
+        XCTAssertTrue(controller.handle(backspace, client: client))
+        XCTAssertEqual(controller.inputStateDescription, "composing")
+        XCTAssertEqual(controller.composedHiragana, "a")
+
+        // 2回目: inputHistory が空 → handleBackspaceWithoutHistoryInComposing が動作し "a" を削除
+        XCTAssertTrue(controller.handle(backspace, client: client))
+        XCTAssertEqual(controller.composedHiragana, "")
+        XCTAssertEqual(client.insertedTexts.count, 0)
+    }
+
     private func makeConversionSession(original: String) -> ConversionSession {
         let clauses = original.map { character in
             [ConvertCandidate(surface: String(character), yomi: String(character), cost: 0)]
@@ -60,7 +129,7 @@ final class BackspaceHandlingTests: XCTestCase {
     private func assertBackspaceHandledInComposing(characters: String, keyCode: UInt16) {
         let client = MockTextInput()
         guard let controller = AkazaInputController(server: nil, delegate: nil, client: nil) else {
-            XCTFail("failed to create AkazaInputController")
+            XCTFail("AkazaInputController の生成に失敗しました")
             return
         }
 
