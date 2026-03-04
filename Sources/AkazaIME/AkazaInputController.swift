@@ -46,6 +46,10 @@ class AkazaInputController: IMKInputController {
         let keyCode = event.keyCode
         NSLog("AkazaIME: keyCode=\(keyCode) characters=\(event.characters ?? "")")
 
+        if isBackspaceEvent(event, keyCode: keyCode) {
+            return handleBackspaceEvent(event: event, client: client)
+        }
+
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         if flags.contains(.command) || flags.contains(.control) || flags.contains(.option) {
             if hasPreedit { commitCurrentState(client: client) }
@@ -155,8 +159,9 @@ class AkazaInputController: IMKInputController {
     }
 
     func handleBackspaceInComposing(client: any IMKTextInput) -> Bool {
-        // Restore from input history if available
-        guard !inputHistory.isEmpty else { return false }
+        guard !inputHistory.isEmpty else {
+            return handleBackspaceWithoutHistoryInComposing(client: client)
+        }
 
         // Skip snapshots with non-empty romajiBuffer to treat multi-key romaji sequences
         // (e.g. "ge" → "げ") as a single character for backspace purposes.
