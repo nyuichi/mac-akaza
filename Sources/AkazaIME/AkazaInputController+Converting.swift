@@ -23,8 +23,10 @@ extension AkazaInputController {
             return handleNextClauseInConverting(client: client)
         case 36: // Enter
             return handleEnterInConverting(client: client)
-        case 53, 51: // Escape, Backspace
+        case 53: // Escape
             return handleEscapeInConverting(client: client)
+        case 51: // Backspace
+            return handleBackspaceInConverting(client: client)
         default:
             return handleDefaultKeyInConverting(event: event, client: client)
         }
@@ -93,6 +95,15 @@ extension AkazaInputController {
         Self.candidateWindow.hide()
         updateComposingMarkedText(client: client)
         return true
+    }
+
+    private func handleBackspaceInConverting(client: any IMKTextInput) -> Bool {
+        guard case .converting(let session) = inputState else { return false }
+        composedHiragana = session.originalHiragana
+        inputState = .composing
+        inputHistory.removeAll()
+        Self.candidateWindow.hide()
+        return handleBackspaceInComposing(client: client)
     }
 
     private func handleNumberKeyInConverting(number: Int, client: any IMKTextInput) -> Bool {

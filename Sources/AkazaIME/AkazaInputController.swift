@@ -48,6 +48,17 @@ class AkazaInputController: IMKInputController {
         let keyCode = event.keyCode
         NSLog("AkazaIME: keyCode=\(keyCode) characters=\(event.characters ?? "")")
 
+        if isBackspaceEvent(event, keyCode: keyCode) {
+            switch inputState {
+            case .composing:
+                return handleBackspaceInComposing(client: client)
+            case .suggesting:
+                return handleSuggestingState(event: event, keyCode: 51, client: client)
+            case .converting:
+                return handleConvertingState(event: event, keyCode: 51, client: client)
+            }
+        }
+
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         if flags.contains(.command) || flags.contains(.control) || flags.contains(.option) {
             if hasPreedit { commitCurrentState(client: client) }
@@ -62,6 +73,12 @@ class AkazaInputController: IMKInputController {
         case .converting:
             return handleConvertingState(event: event, keyCode: keyCode, client: client)
         }
+    }
+
+    private func isBackspaceEvent(_ event: NSEvent, keyCode: UInt16) -> Bool {
+        if keyCode == 51 { return true }
+        guard let scalar = event.characters?.unicodeScalars.first?.value else { return false }
+        return scalar == 0x08 || scalar == 0x7F
     }
 
     // MARK: - Composing state
@@ -144,8 +161,9 @@ class AkazaInputController: IMKInputController {
     }
 
     func handleBackspaceInComposing(client: any IMKTextInput) -> Bool {
-        // Restore from input history if available
-        guard !inputHistory.isEmpty else { return false }
+        guard !inputHistory.isEmpty else {
+            return handleBackspaceWithoutHistoryInComposing(client: client)
+        }
 
         // Skip snapshots with non-empty romajiBuffer to treat multi-key romaji sequences
         // (e.g. "ge" → "げ") as a single character for backspace purposes.
@@ -159,6 +177,19 @@ class AkazaInputController: IMKInputController {
             buffer: snapshot.romajiBuffer,
             shiftStates: snapshot.romajiShiftStates
         )
+        updateComposingMarkedText(client: client)
+        scheduleSuggest(client: client)
+        return true
+    }
+
+    private func handleBackspaceWithoutHistoryInComposing(client: any IMKTextInput) -> Bool {
+        if romajiConverter.backspace() {
+            updateComposingMarkedText(client: client)
+            scheduleSuggest(client: client)
+            return true
+        }
+        guard !composedHiragana.isEmpty else { return false }
+        composedHiragana.removeLast()
         updateComposingMarkedText(client: client)
         scheduleSuggest(client: client)
         return true
