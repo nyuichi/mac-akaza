@@ -136,7 +136,7 @@ final class BackspaceHandlingTests: XCTestCase {
         controller.inputState = .composing
         controller.composedHiragana = "x"
         controller.inputHistory = [
-            ComposingSnapshot(composedHiragana: "", romajiBuffer: "")
+            ComposingSnapshot(composedHiragana: "", romajiBuffer: "", romajiShiftStates: [])
         ]
 
         let event = makeKeyDownEvent(
