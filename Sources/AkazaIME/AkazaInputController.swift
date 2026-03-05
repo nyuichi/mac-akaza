@@ -12,7 +12,11 @@ class AkazaInputController: IMKInputController {
     var composedHiragana: String = ""
     let romajiConverter = RomajiConverter()
     var inputState: InputState = .composing
-    static let candidateWindow = CandidateWindowController()
+    private static let isRunningTests = NSClassFromString("XCTestCase") != nil
+    static let candidateWindow: CandidateWindowController? = {
+        // Unit tests run without a full AppKit input-method host; avoid NSPanel lifecycle there.
+        isRunningTests ? nil : CandidateWindowController()
+    }()
     var inputHistory: [ComposingSnapshot] = []
 
     var pendingSuggestRequestID: Int?
@@ -111,7 +115,7 @@ class AkazaInputController: IMKInputController {
             composedHiragana = ""
             isDirectInputMode = false
             clearInputHistory()
-            Self.candidateWindow.hide()
+            Self.candidateWindow?.hide()
             return true
         }
 
@@ -119,7 +123,7 @@ class AkazaInputController: IMKInputController {
             composedHiragana = text
             clearInputHistory()
             updateComposingMarkedText(client: client)
-            Self.candidateWindow.hide()
+            Self.candidateWindow?.hide()
             return true
         }
 
@@ -143,7 +147,7 @@ class AkazaInputController: IMKInputController {
             composedHiragana = ""
             isDirectInputMode = false
             clearInputHistory()
-            Self.candidateWindow.hide()
+            Self.candidateWindow?.hide()
             return true
         }
 
@@ -151,7 +155,7 @@ class AkazaInputController: IMKInputController {
         composedHiragana = ""
         isDirectInputMode = false
         clearInputHistory()
-        Self.candidateWindow.hide()
+        Self.candidateWindow?.hide()
         return true
     }
 
@@ -264,7 +268,7 @@ class AkazaInputController: IMKInputController {
         isDirectInputMode = false
         romajiConverter.clear()
         clearInputHistory()
-        Self.candidateWindow.hide()
+        Self.candidateWindow?.hide()
     }
 
     // MARK: - Punctuation style
@@ -311,16 +315,25 @@ extension AkazaInputController {
 
         // 直接入力モード中はサジェストを抑制する
         guard !isDirectInputMode else {
-            Self.candidateWindow.hide()
+            Self.candidateWindow?.hide()
             return
         }
 
         let yomi = composedHiragana
         guard !yomi.isEmpty else {
             latestSuggestYomi = nil
-            Self.candidateWindow.hide()
+            Self.candidateWindow?.hide()
             return
         }
+
+        guard !Self.isRunningTests else {
+            return
+        }
+
+        guard akazaServerProcess.stdinPipe != nil else {
+            return
+        }
+
         guard yomi != latestSuggestYomi else { return }
 
         latestSuggestYomi = yomi

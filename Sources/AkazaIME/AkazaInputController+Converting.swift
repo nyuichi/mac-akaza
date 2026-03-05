@@ -92,7 +92,7 @@ extension AkazaInputController {
         guard case .converting(let session) = inputState else { return false }
         composedHiragana = session.originalHiragana
         inputState = .composing
-        Self.candidateWindow.hide()
+        Self.candidateWindow?.hide()
         updateComposingMarkedText(client: client)
         return true
     }
@@ -102,7 +102,7 @@ extension AkazaInputController {
         composedHiragana = session.originalHiragana
         inputState = .composing
         inputHistory.removeAll()
-        Self.candidateWindow.hide()
+        Self.candidateWindow?.hide()
         return handleBackspaceInComposing(client: client)
     }
 
@@ -157,7 +157,7 @@ extension AkazaInputController {
         if candidateWindowVisibilityPolicy.shouldShowWindow(for: trigger) {
             showCandidateWindow(client: client)
         } else {
-            Self.candidateWindow.hide()
+            Self.candidateWindow?.hide()
         }
     }
 
@@ -216,7 +216,7 @@ extension AkazaInputController {
 
         let allCandidates = session.focusedCandidates
         guard !allCandidates.isEmpty else {
-            Self.candidateWindow.hide()
+            Self.candidateWindow?.hide()
             return
         }
 
@@ -231,7 +231,7 @@ extension AkazaInputController {
         var lineHeightRect = NSRect.zero
         client.attributes(forCharacterIndex: 0, lineHeightRectangle: &lineHeightRect)
 
-        Self.candidateWindow.show(
+        Self.candidateWindow?.show(
             candidates: candidates,
             selectedIndex: selectedIndex,
             cursorRect: lineHeightRect

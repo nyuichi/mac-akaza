@@ -68,7 +68,7 @@ extension AkazaInputController {
         guard case .suggesting(let session) = inputState else { return false }
         composedHiragana = session.originalHiragana
         inputState = .composing
-        Self.candidateWindow.hide()
+        Self.candidateWindow?.hide()
         updateComposingMarkedText(client: client)
         return true
     }
@@ -108,7 +108,7 @@ extension AkazaInputController {
     func showSuggestCandidateWindow(client: any IMKTextInput) {
         guard case .suggesting(let session) = inputState else { return }
         guard candidateWindowVisibilityPolicy.shouldShowWindow(for: .composingSuggestion) else {
-            Self.candidateWindow.hide()
+            Self.candidateWindow?.hide()
             return
         }
 
@@ -121,7 +121,7 @@ extension AkazaInputController {
         let suggestions = allSurfaces.filter { seen.insert($0).inserted }
 
         guard !suggestions.isEmpty else {
-            Self.candidateWindow.hide()
+            Self.candidateWindow?.hide()
             return
         }
 
@@ -132,7 +132,7 @@ extension AkazaInputController {
         var lineHeightRect = NSRect.zero
         client.attributes(forCharacterIndex: 0, lineHeightRectangle: &lineHeightRect)
 
-        Self.candidateWindow.showSuggestions(
+        Self.candidateWindow?.showSuggestions(
             suggestions: suggestions,
             selectedIndex: selectedIndex,
             cursorRect: lineHeightRect
