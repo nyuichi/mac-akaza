@@ -38,22 +38,25 @@ struct ConversionSession {
         return clauses[focusedClauseIndex]
     }
 
+    var focusedDisplayCandidates: [ConvertCandidate] {
+        focusedCandidateProjection.displayedElements
+    }
+
     var focusedSelectedIndex: Int {
         guard focusedClauseIndex < selectedCandidateIndices.count else { return 0 }
         return selectedCandidateIndices[focusedClauseIndex]
     }
 
+    var focusedDisplaySelectedIndex: Int {
+        focusedCandidateProjection.displayIndex(forRawIndex: focusedSelectedIndex)
+    }
+
     mutating func nextCandidate() {
-        guard !focusedCandidates.isEmpty else { return }
-        let count = focusedCandidates.count
-        selectedCandidateIndices[focusedClauseIndex] = (selectedCandidateIndices[focusedClauseIndex] + 1) % count
+        moveFocusedDisplayCandidate(offset: 1)
     }
 
     mutating func previousCandidate() {
-        guard !focusedCandidates.isEmpty else { return }
-        let count = focusedCandidates.count
-        let current = selectedCandidateIndices[focusedClauseIndex]
-        selectedCandidateIndices[focusedClauseIndex] = (current - 1 + count) % count
+        moveFocusedDisplayCandidate(offset: -1)
     }
 
     mutating func focusPreviousClause() {
@@ -68,10 +71,11 @@ struct ConversionSession {
         }
     }
 
-    mutating func selectCandidate(number: Int) -> Bool {
-        let index = number - 1
-        guard index >= 0, index < focusedCandidates.count else { return false }
-        selectedCandidateIndices[focusedClauseIndex] = index
+    mutating func selectDisplayedCandidate(at displayIndex: Int) -> Bool {
+        guard let rawIndex = focusedCandidateProjection.rawIndex(forDisplayIndex: displayIndex) else {
+            return false
+        }
+        selectedCandidateIndices[focusedClauseIndex] = rawIndex
         return true
     }
 
@@ -137,5 +141,19 @@ struct ConversionSession {
             byteOffset += byteCount
         }
         return ranges
+    }
+
+    private var focusedCandidateProjection: DistinctDisplayProjection<ConvertCandidate> {
+        DistinctDisplayProjection(elements: focusedCandidates) { $0.surface }
+    }
+
+    private mutating func moveFocusedDisplayCandidate(offset: Int) {
+        let projection = focusedCandidateProjection
+        guard !projection.isEmpty else { return }
+
+        let count = projection.displayedElements.count
+        let nextDisplayIndex = (focusedDisplaySelectedIndex + offset + count) % count
+        guard let rawIndex = projection.rawIndex(forDisplayIndex: nextDisplayIndex) else { return }
+        selectedCandidateIndices[focusedClauseIndex] = rawIndex
     }
 }
