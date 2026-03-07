@@ -2,6 +2,11 @@ import Cocoa
 
 class GeneralSettingsView: NSView {
     private let punctuationPopUp = NSPopUpButton()
+    private let showPredictiveCandidatesCheckbox = NSButton(
+        checkboxWithTitle: "推測候補表示",
+        target: nil,
+        action: nil
+    )
     private let modelVersionLabel = NSTextField(labelWithString: "読み込み中...")
     private let modelBuildTimestampLabel = NSTextField(labelWithString: "")
     private let skkJisyoStatusLabel = NSTextField(labelWithString: "確認中...")
@@ -39,16 +44,26 @@ class GeneralSettingsView: NSView {
         punctuationPopUp.action = #selector(punctuationStyleChanged(_:))
         addSubview(punctuationPopUp)
 
+        showPredictiveCandidatesCheckbox.translatesAutoresizingMaskIntoConstraints = false
+        showPredictiveCandidatesCheckbox.state = Settings.shared.showPredictiveCandidates ? .on : .off
+        showPredictiveCandidatesCheckbox.target = self
+        showPredictiveCandidatesCheckbox.action = #selector(showPredictiveCandidatesChanged(_:))
+        addSubview(showPredictiveCandidatesCheckbox)
+
         NSLayoutConstraint.activate([
             punctuationLabel.topAnchor.constraint(equalTo: topAnchor, constant: 20),
             punctuationLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
 
             punctuationPopUp.centerYAnchor.constraint(equalTo: punctuationLabel.centerYAnchor),
             punctuationPopUp.leadingAnchor.constraint(equalTo: punctuationLabel.trailingAnchor, constant: 8),
-            punctuationPopUp.widthAnchor.constraint(greaterThanOrEqualToConstant: 200)
+            punctuationPopUp.widthAnchor.constraint(greaterThanOrEqualToConstant: 200),
+
+            showPredictiveCandidatesCheckbox.topAnchor.constraint(equalTo: punctuationLabel.bottomAnchor, constant: 12),
+            showPredictiveCandidatesCheckbox.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
+            showPredictiveCandidatesCheckbox.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -20)
         ])
 
-        let lastModelView = setupModelInfoViews(below: punctuationLabel)
+        let lastModelView = setupModelInfoViews(below: showPredictiveCandidatesCheckbox)
         setupDictViews(below: lastModelView)
     }
 
@@ -286,6 +301,10 @@ class GeneralSettingsView: NSView {
         if let style = PunctuationStyle(rawValue: sender.indexOfSelectedItem) {
             Settings.shared.punctuationStyle = style
         }
+    }
+
+    @objc private func showPredictiveCandidatesChanged(_ sender: NSButton) {
+        Settings.shared.showPredictiveCandidates = sender.state == .on
     }
 
     // MARK: - Private helpers

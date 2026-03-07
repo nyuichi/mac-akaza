@@ -7,7 +7,17 @@ enum PunctuationStyle: Int {
 
 class Settings {
     static let shared = Settings()
-    private let defaults = UserDefaults.standard
+
+    private let defaults: UserDefaults
+
+    private enum DefaultsName {
+        static let showPredictiveCandidates = "showPredictiveCandidates"
+    }
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        defaults.register(defaults: [DefaultsName.showPredictiveCandidates: true])
+    }
 
     var punctuationStyle: PunctuationStyle {
         get { PunctuationStyle(rawValue: defaults.integer(forKey: "punctuationStyle")) ?? .kutouten }
@@ -17,6 +27,11 @@ class Settings {
     var additionalDictPaths: [String] {
         get { defaults.stringArray(forKey: "additionalDictPaths") ?? [] }
         set { defaults.set(newValue, forKey: "additionalDictPaths") }
+    }
+
+    var showPredictiveCandidates: Bool {
+        get { defaults.bool(forKey: DefaultsName.showPredictiveCandidates) }
+        set { defaults.set(newValue, forKey: DefaultsName.showPredictiveCandidates) }
     }
 
     // サジェスト候補の最大パス数。k=9 は速度が遅いため k=5 をデフォルトとする (2026-02-26)

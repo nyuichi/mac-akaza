@@ -17,6 +17,12 @@ class AkazaInputController: IMKInputController {
     var pendingSuggestRequestID: Int?
     var latestSuggestYomi: String?
 
+    var candidateWindowVisibilityPolicy: CandidateWindowVisibilityPolicy {
+        CandidateWindowVisibilityPolicy(
+            showPredictiveCandidates: Settings.shared.showPredictiveCandidates
+        )
+    }
+
     // 大文字 ASCII を入力したときに true になる直接入力モード。
     // このモードでは後続の printable ASCII もローマ字変換せず preedit に積み、
     // スペースで変換せずそのままコミットする（例: "Java" → "Java"）。
@@ -121,7 +127,7 @@ class AkazaInputController: IMKInputController {
         composedHiragana = ""
         clearInputHistory()
         updateConvertingMarkedText(client: client)
-        showCandidateWindow(client: client)
+        updateConversionCandidateWindow(client: client, trigger: .conversionStarted)
         return true
     }
 

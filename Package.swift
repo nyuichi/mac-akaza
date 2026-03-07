@@ -12,6 +12,16 @@ let package = Package(
             linkerSettings: [
                 .unsafeFlags(["-framework", "InputMethodKit"])
             ]
+        ),
+        .testTarget(
+            name: "AkazaIMETests",
+            dependencies: ["AkazaIME"],
+            path: "Tests/AkazaIMETests",
+            exclude: ["AkazaInputControllerBackspaceModifierTests.swift"],
+            sources: [
+                "CandidateWindowVisibilityPolicyTests.swift",
+                "SettingsTests.swift"
+            ]
         )
     ]
 )
