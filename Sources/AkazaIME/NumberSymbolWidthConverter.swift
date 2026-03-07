@@ -1,9 +1,9 @@
 import Foundation
 
-enum SymbolWidthConverter {
+enum NumberSymbolWidthConverter {
     private static let fullWidthOffset: UInt32 = 0xFEE0
 
-    static func normalize(_ text: String, style: SymbolStyle) -> String {
+    static func normalize(_ text: String, style: NumberSymbolStyle) -> String {
         var normalized = String.UnicodeScalarView()
         normalized.reserveCapacity(text.unicodeScalars.count)
 
@@ -21,7 +21,7 @@ enum SymbolWidthConverter {
 
     private static func convertToFullWidthIfNeeded(_ scalar: UnicodeScalar) -> UnicodeScalar {
         let value = scalar.value
-        guard isASCIISymbol(value) else { return scalar }
+        guard isASCIINumberOrSymbol(value) else { return scalar }
         return UnicodeScalar(value + fullWidthOffset) ?? scalar
     }
 
@@ -30,13 +30,12 @@ enum SymbolWidthConverter {
         guard (0xFF01...0xFF5E).contains(value) else { return scalar }
 
         let asciiValue = value - fullWidthOffset
-        guard isASCIISymbol(asciiValue) else { return scalar }
+        guard isASCIINumberOrSymbol(asciiValue) else { return scalar }
         return UnicodeScalar(asciiValue) ?? scalar
     }
 
-    private static func isASCIISymbol(_ value: UInt32) -> Bool {
+    private static func isASCIINumberOrSymbol(_ value: UInt32) -> Bool {
         guard (0x21...0x7E).contains(value) else { return false }
-        if (0x30...0x39).contains(value) { return false } // 0-9
         if (0x41...0x5A).contains(value) { return false } // A-Z
         if (0x61...0x7A).contains(value) { return false } // a-z
         return true
