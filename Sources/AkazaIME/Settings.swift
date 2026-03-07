@@ -5,7 +5,7 @@ enum PunctuationStyle: Int {
     case commaPeriod = 1 // ，．
 }
 
-enum SymbolStyle: Int {
+enum NumberSymbolStyle: Int {
     case fullWidth = 0
     case halfWidth = 1
 }
@@ -16,6 +16,7 @@ class Settings {
     private let defaults: UserDefaults
 
     private enum DefaultsName {
+        static let numberSymbolStyle = "numberSymbolStyle"
         static let showPredictiveCandidates = "showPredictiveCandidates"
         static let shiftKatakanaInputEnabled = "shiftKatakanaInputEnabled"
     }
@@ -30,9 +31,12 @@ class Settings {
         set { defaults.set(newValue.rawValue, forKey: "punctuationStyle") }
     }
 
-    var symbolStyle: SymbolStyle {
-        get { SymbolStyle(rawValue: defaults.integer(forKey: "symbolStyle")) ?? .fullWidth }
-        set { defaults.set(newValue.rawValue, forKey: "symbolStyle") }
+    var numberSymbolStyle: NumberSymbolStyle {
+        get {
+            NumberSymbolStyle(rawValue: defaults.integer(forKey: DefaultsName.numberSymbolStyle))
+                ?? .fullWidth
+        }
+        set { defaults.set(newValue.rawValue, forKey: DefaultsName.numberSymbolStyle) }
     }
 
     var additionalDictPaths: [String] {
