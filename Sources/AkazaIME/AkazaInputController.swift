@@ -24,7 +24,7 @@ class AkazaInputController: IMKInputController {
 
     var candidateWindowVisibilityPolicy: CandidateWindowVisibilityPolicy {
         CandidateWindowVisibilityPolicy(
-            showOnlyAfterSecondSpace: Settings.shared.showCandidateWindowAfterSecondSpace
+            showPredictiveCandidates: Settings.shared.showPredictiveCandidates
         )
     }
 

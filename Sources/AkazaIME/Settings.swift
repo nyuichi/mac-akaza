@@ -13,11 +13,16 @@ enum SymbolStyle: Int {
 class Settings {
     static let shared = Settings()
 
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
 
     private enum DefaultsName {
-        static let showCandidateWindowAfterSecondSpace = "showCandidateWindowAfterSecondSpace"
+        static let showPredictiveCandidates = "showPredictiveCandidates"
         static let shiftKatakanaInputEnabled = "shiftKatakanaInputEnabled"
+    }
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        defaults.register(defaults: [DefaultsName.showPredictiveCandidates: true])
     }
 
     var punctuationStyle: PunctuationStyle {
@@ -35,9 +40,9 @@ class Settings {
         set { defaults.set(newValue, forKey: "additionalDictPaths") }
     }
 
-    var showCandidateWindowAfterSecondSpace: Bool {
-        get { defaults.bool(forKey: DefaultsName.showCandidateWindowAfterSecondSpace) }
-        set { defaults.set(newValue, forKey: DefaultsName.showCandidateWindowAfterSecondSpace) }
+    var showPredictiveCandidates: Bool {
+        get { defaults.bool(forKey: DefaultsName.showPredictiveCandidates) }
+        set { defaults.set(newValue, forKey: DefaultsName.showPredictiveCandidates) }
     }
 
     var shiftKatakanaInputEnabled: Bool {

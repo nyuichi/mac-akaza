@@ -8,8 +8,8 @@ class GeneralSettingsView: NSView {
         target: nil,
         action: nil
     )
-    private let showCandidateWindowAfterSecondSpace = NSButton(
-        checkboxWithTitle: "候補ウィンドウを2回目のスペースで表示",
+    private let showPredictiveCandidatesCheckbox = NSButton(
+        checkboxWithTitle: "推測候補表示",
         target: nil,
         action: nil
     )
@@ -70,12 +70,11 @@ class GeneralSettingsView: NSView {
         shiftKatakanaInputEnabled.action = #selector(shiftKatakanaInputEnabledChanged(_:))
         addSubview(shiftKatakanaInputEnabled)
 
-        showCandidateWindowAfterSecondSpace.translatesAutoresizingMaskIntoConstraints = false
-        showCandidateWindowAfterSecondSpace.state = Settings.shared.showCandidateWindowAfterSecondSpace ? .on : .off
-        showCandidateWindowAfterSecondSpace.target = self
-        showCandidateWindowAfterSecondSpace.action = #selector(
-            showCandidateWindowAfterSecondSpaceChanged(_:))
-        addSubview(showCandidateWindowAfterSecondSpace)
+        showPredictiveCandidatesCheckbox.translatesAutoresizingMaskIntoConstraints = false
+        showPredictiveCandidatesCheckbox.state = Settings.shared.showPredictiveCandidates ? .on : .off
+        showPredictiveCandidatesCheckbox.target = self
+        showPredictiveCandidatesCheckbox.action = #selector(showPredictiveCandidatesChanged(_:))
+        addSubview(showPredictiveCandidatesCheckbox)
 
         NSLayoutConstraint.activate([
             punctuationLabel.topAnchor.constraint(equalTo: topAnchor, constant: 20),
@@ -96,12 +95,12 @@ class GeneralSettingsView: NSView {
             shiftKatakanaInputEnabled.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
             shiftKatakanaInputEnabled.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -20),
 
-            showCandidateWindowAfterSecondSpace.topAnchor.constraint(equalTo: shiftKatakanaInputEnabled.bottomAnchor, constant: 6),
-            showCandidateWindowAfterSecondSpace.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
-            showCandidateWindowAfterSecondSpace.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -20)
+            showPredictiveCandidatesCheckbox.topAnchor.constraint(equalTo: shiftKatakanaInputEnabled.bottomAnchor, constant: 6),
+            showPredictiveCandidatesCheckbox.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
+            showPredictiveCandidatesCheckbox.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -20)
         ])
 
-        let lastModelView = setupModelInfoViews(below: showCandidateWindowAfterSecondSpace)
+        let lastModelView = setupModelInfoViews(below: showPredictiveCandidatesCheckbox)
         setupDictViews(below: lastModelView)
     }
 
@@ -351,8 +350,8 @@ class GeneralSettingsView: NSView {
         Settings.shared.shiftKatakanaInputEnabled = sender.state == .on
     }
 
-    @objc private func showCandidateWindowAfterSecondSpaceChanged(_ sender: NSButton) {
-        Settings.shared.showCandidateWindowAfterSecondSpace = sender.state == .on
+    @objc private func showPredictiveCandidatesChanged(_ sender: NSButton) {
+        Settings.shared.showPredictiveCandidates = sender.state == .on
     }
 
     // MARK: - Private helpers

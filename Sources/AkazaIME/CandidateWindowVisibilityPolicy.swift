@@ -7,10 +7,10 @@ enum CandidateWindowTrigger {
 }
 
 struct CandidateWindowVisibilityPolicy {
-    let showOnlyAfterSecondSpace: Bool
+    let showPredictiveCandidates: Bool
 
     func shouldShowWindow(for trigger: CandidateWindowTrigger) -> Bool {
-        guard showOnlyAfterSecondSpace else { return true }
+        guard !showPredictiveCandidates else { return true }
 
         switch trigger {
         case .composingSuggestion, .conversionStarted:
