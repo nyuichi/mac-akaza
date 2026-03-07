@@ -5,6 +5,44 @@ import XCTest
 @testable import AkazaIME
 
 final class BackspaceHandlingTests: XCTestCase {
+    // 未確定文字列がある状態で入力ソースを切り替えても、同じ文字列が二重に確定されない
+    func testDeactivateServerDoesNotCommitMarkedTextTwice() {
+        let client = MockTextInput()
+        guard let controller = AkazaInputController(server: nil, delegate: nil, client: nil) else {
+            XCTFail("AkazaInputController の生成に失敗しました")
+            return
+        }
+
+        controller.inputState = .composing
+        controller.composedHiragana = "こんにちは"
+        controller.updateComposingMarkedText(client: client)
+
+        controller.deactivateServer(client)
+        client.commitRemainingMarkedText()
+
+        XCTAssertEqual(client.insertedTexts, ["こんにちは"])
+        XCTAssertEqual(client.markedText, "")
+    }
+
+    // WebKit が commitComposition を要求しても、未確定文字列が二重に確定されない
+    func testCommitCompositionDoesNotCommitMarkedTextTwice() {
+        let client = MockTextInput()
+        guard let controller = AkazaInputController(server: nil, delegate: nil, client: nil) else {
+            XCTFail("AkazaInputController の生成に失敗しました")
+            return
+        }
+
+        controller.inputState = .composing
+        controller.composedHiragana = "こんにちは"
+        controller.updateComposingMarkedText(client: client)
+
+        controller.commitComposition(client)
+        client.commitRemainingMarkedText()
+
+        XCTAssertEqual(client.insertedTexts, ["こんにちは"])
+        XCTAssertEqual(client.markedText, "")
+    }
+
     // Ctrl+Backspace（keyCode=51, chars=0x7F）を composing 中にバックスペースとして処理する
     func testControlModifiedBackspaceIsHandledAsBackspaceInComposing() {
         assertBackspaceHandledInComposing(characters: "\u{7F}", keyCode: 51)
@@ -193,6 +231,7 @@ private extension AkazaInputController {
 
 private final class MockTextInput: NSObject, IMKTextInput {
     var insertedTexts: [String] = []
+    var markedText: String = ""
 
     func insertText(_ string: Any!, replacementRange: NSRange) {
         if let attributed = string as? NSAttributedString {
@@ -206,9 +245,23 @@ private final class MockTextInput: NSObject, IMKTextInput {
         insertedTexts.append(String(describing: string))
     }
 
-    func setMarkedText(_ string: Any!, selectionRange: NSRange, replacementRange: NSRange) {}
+    func setMarkedText(_ string: Any!, selectionRange: NSRange, replacementRange: NSRange) {
+        if let attributed = string as? NSAttributedString {
+            markedText = attributed.string
+            return
+        }
+        if let text = string as? String {
+            markedText = text
+            return
+        }
+        markedText = String(describing: string ?? "")
+    }
     func selectedRange() -> NSRange { NSRange(location: 0, length: 0) }
-    func markedRange() -> NSRange { NSRange(location: NSNotFound, length: 0) }
+    func markedRange() -> NSRange {
+        markedText.isEmpty
+            ? NSRange(location: NSNotFound, length: 0)
+            : NSRange(location: 0, length: (markedText as NSString).length)
+    }
     func attributedSubstring(from range: NSRange) -> NSAttributedString! { nil }
     func length() -> Int { 0 }
     func characterIndex(
@@ -230,4 +283,10 @@ private final class MockTextInput: NSObject, IMKTextInput {
     func uniqueClientIdentifierString() -> String! { "test-client" }
     func string(from range: NSRange, actualRange: NSRangePointer!) -> String! { nil }
     func firstRect(forCharacterRange aRange: NSRange, actualRange: NSRangePointer!) -> NSRect { .zero }
+
+    func commitRemainingMarkedText() {
+        guard !markedText.isEmpty else { return }
+        insertedTexts.append(markedText)
+        markedText = ""
+    }
 }
