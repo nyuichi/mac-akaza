@@ -36,4 +36,19 @@ final class SettingsTests: XCTestCase {
         settings.showPredictiveCandidates = true
         XCTAssertTrue(Settings(defaults: defaults).showPredictiveCandidates)
     }
+
+    func testNumberSymbolStyleDefaultsToFullWidth() {
+        let settings = Settings(defaults: defaults)
+
+        XCTAssertEqual(settings.numberSymbolStyle, .fullWidth)
+    }
+
+    func testNumberSymbolStylePersistsSelectedValue() {
+        let settings = Settings(defaults: defaults)
+
+        settings.numberSymbolStyle = .halfWidth
+
+        XCTAssertEqual(Settings(defaults: defaults).numberSymbolStyle, .halfWidth)
+        XCTAssertEqual(defaults.integer(forKey: "numberSymbolStyle"), NumberSymbolStyle.halfWidth.rawValue)
+    }
 }

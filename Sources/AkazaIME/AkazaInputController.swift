@@ -400,9 +400,9 @@ private extension AkazaInputController {
             case .pending:
                 break
             case .passthrough(let character):
-                composedHiragana += SymbolWidthConverter.normalize(
+                composedHiragana += NumberSymbolWidthConverter.normalize(
                     String(character),
-                    style: Settings.shared.symbolStyle
+                    style: Settings.shared.numberSymbolStyle
                 )
             }
         }

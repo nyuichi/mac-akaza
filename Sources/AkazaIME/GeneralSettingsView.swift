@@ -2,7 +2,7 @@ import Cocoa
 
 class GeneralSettingsView: NSView {
     private let punctuationPopUp = NSPopUpButton()
-    private let symbolPopUp = NSPopUpButton()
+    private let numberSymbolPopUp = NSPopUpButton()
     private let shiftKatakanaInputEnabled = NSButton(
         checkboxWithTitle: "Shiftキー入力でカタカナにする",
         target: nil,
@@ -40,9 +40,9 @@ class GeneralSettingsView: NSView {
         punctuationLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(punctuationLabel)
 
-        let symbolLabel = NSTextField(labelWithString: "記号スタイル:")
-        symbolLabel.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(symbolLabel)
+        let numberSymbolLabel = NSTextField(labelWithString: "数字・記号スタイル:")
+        numberSymbolLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(numberSymbolLabel)
 
         punctuationPopUp.translatesAutoresizingMaskIntoConstraints = false
         punctuationPopUp.addItems(withTitles: [
@@ -54,15 +54,15 @@ class GeneralSettingsView: NSView {
         punctuationPopUp.action = #selector(punctuationStyleChanged(_:))
         addSubview(punctuationPopUp)
 
-        symbolPopUp.translatesAutoresizingMaskIntoConstraints = false
-        symbolPopUp.addItems(withTitles: [
-            "全角（！？／＠）",
-            "半角（!?/@）"
+        numberSymbolPopUp.translatesAutoresizingMaskIntoConstraints = false
+        numberSymbolPopUp.addItems(withTitles: [
+            "全角（１！＠／）",
+            "半角（1!@/）"
         ])
-        symbolPopUp.selectItem(at: Settings.shared.symbolStyle.rawValue)
-        symbolPopUp.target = self
-        symbolPopUp.action = #selector(symbolStyleChanged(_:))
-        addSubview(symbolPopUp)
+        numberSymbolPopUp.selectItem(at: Settings.shared.numberSymbolStyle.rawValue)
+        numberSymbolPopUp.target = self
+        numberSymbolPopUp.action = #selector(numberSymbolStyleChanged(_:))
+        addSubview(numberSymbolPopUp)
 
         shiftKatakanaInputEnabled.translatesAutoresizingMaskIntoConstraints = false
         shiftKatakanaInputEnabled.state = Settings.shared.shiftKatakanaInputEnabled ? .on : .off
@@ -84,14 +84,14 @@ class GeneralSettingsView: NSView {
             punctuationPopUp.leadingAnchor.constraint(equalTo: punctuationLabel.trailingAnchor, constant: 8),
             punctuationPopUp.widthAnchor.constraint(greaterThanOrEqualToConstant: 200),
 
-            symbolLabel.topAnchor.constraint(equalTo: punctuationLabel.bottomAnchor, constant: 12),
-            symbolLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
+            numberSymbolLabel.topAnchor.constraint(equalTo: punctuationLabel.bottomAnchor, constant: 12),
+            numberSymbolLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
 
-            symbolPopUp.centerYAnchor.constraint(equalTo: symbolLabel.centerYAnchor),
-            symbolPopUp.leadingAnchor.constraint(equalTo: symbolLabel.trailingAnchor, constant: 8),
-            symbolPopUp.widthAnchor.constraint(greaterThanOrEqualToConstant: 200),
+            numberSymbolPopUp.centerYAnchor.constraint(equalTo: numberSymbolLabel.centerYAnchor),
+            numberSymbolPopUp.leadingAnchor.constraint(equalTo: numberSymbolLabel.trailingAnchor, constant: 8),
+            numberSymbolPopUp.widthAnchor.constraint(greaterThanOrEqualToConstant: 200),
 
-            shiftKatakanaInputEnabled.topAnchor.constraint(equalTo: symbolLabel.bottomAnchor, constant: 12),
+            shiftKatakanaInputEnabled.topAnchor.constraint(equalTo: numberSymbolLabel.bottomAnchor, constant: 12),
             shiftKatakanaInputEnabled.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
             shiftKatakanaInputEnabled.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -20),
 
@@ -340,9 +340,9 @@ class GeneralSettingsView: NSView {
         }
     }
 
-    @objc private func symbolStyleChanged(_ sender: NSPopUpButton) {
-        if let style = SymbolStyle(rawValue: sender.indexOfSelectedItem) {
-            Settings.shared.symbolStyle = style
+    @objc private func numberSymbolStyleChanged(_ sender: NSPopUpButton) {
+        if let style = NumberSymbolStyle(rawValue: sender.indexOfSelectedItem) {
+            Settings.shared.numberSymbolStyle = style
         }
     }
 
