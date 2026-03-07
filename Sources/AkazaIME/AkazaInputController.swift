@@ -111,7 +111,7 @@ class AkazaInputController: IMKInputController {
 
         // 直接入力モードではかな変換せずそのままコミット（例: "Java" → "Java"）
         if isDirectInputMode {
-            client.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
+            commitText(text, client: client)
             composedHiragana = ""
             isDirectInputMode = false
             clearInputHistory()
@@ -151,7 +151,7 @@ class AkazaInputController: IMKInputController {
             return true
         }
 
-        client.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
+        commitText(text, client: client)
         composedHiragana = ""
         isDirectInputMode = false
         clearInputHistory()
@@ -242,12 +242,13 @@ class AkazaInputController: IMKInputController {
             text += flushed
         }
         guard !text.isEmpty else {
+            clearMarkedText(client: client)
             composedHiragana = ""
             isDirectInputMode = false
             clearInputHistory()
             return
         }
-        client.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
+        commitText(text, client: client)
         composedHiragana = ""
         isDirectInputMode = false
         clearInputHistory()
@@ -256,7 +257,7 @@ class AkazaInputController: IMKInputController {
     func commitConvertingText(client: any IMKTextInput) {
         guard case .converting(let session) = inputState else { return }
         let text = session.committedText
-        client.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
+        commitText(text, client: client)
         akazaClient.learnSync(candidates: session.selectedCandidates)
         resetToComposing()
     }
@@ -304,6 +305,20 @@ class AkazaInputController: IMKInputController {
         }
         resetToComposing()
         super.deactivateServer(sender)
+    }
+
+    @objc(commitComposition:)
+    override func commitComposition(_ sender: Any!) {
+        guard let client = (sender as? (any IMKTextInput)) ?? self.client() else {
+            resetToComposing()
+            return
+        }
+        if hasPreedit {
+            commitCurrentState(client: client)
+        } else {
+            clearMarkedText(client: client)
+        }
+        resetToComposing()
     }
 }
 
@@ -359,10 +374,35 @@ extension AkazaInputController {
     }
 }
 
+// MARK: - Client commit helpers
+
+extension AkazaInputController {
+    func commitText(_ text: String, client: any IMKTextInput) {
+        client.insertText(text, replacementRange: markedTextReplacementRange(client: client))
+        clearMarkedText(client: client)
+    }
+
+    func clearMarkedText(client: any IMKTextInput) {
+        client.setMarkedText(
+            NSAttributedString(string: ""),
+            selectionRange: NSRange(location: 0, length: 0),
+            replacementRange: markedTextReplacementRange(client: client)
+        )
+    }
+
+    func markedTextReplacementRange(client: any IMKTextInput) -> NSRange {
+        let markedRange = client.markedRange()
+        if markedRange.location == NSNotFound {
+            return NSRange(location: NSNotFound, length: 0)
+        }
+        return markedRange
+    }
+}
+
 // MARK: - Character processing helpers
 
-private extension AkazaInputController {
-    func processCharacter(_ char: Character, scalar: UInt32, isShiftPressed: Bool) {
+extension AkazaInputController {
+    private func processCharacter(_ char: Character, scalar: UInt32, isShiftPressed: Bool) {
         if scalar >= 0x41 && scalar <= 0x5A && !Settings.shared.shiftKatakanaInputEnabled {
             // 大文字 ASCII: 直接入力モードへ移行
             enterDirectInputMode(char)
@@ -375,7 +415,7 @@ private extension AkazaInputController {
         }
     }
 
-    func enterDirectInputMode(_ char: Character) {
+    private func enterDirectInputMode(_ char: Character) {
         if !isDirectInputMode {
             if let flushed = romajiConverter.flush(
                 shiftKatakanaEnabled: Settings.shared.shiftKatakanaInputEnabled
@@ -387,7 +427,7 @@ private extension AkazaInputController {
         composedHiragana += String(char)
     }
 
-    func feedToRomajiConverter(_ char: Character, isShiftPressed: Bool) {
+    private func feedToRomajiConverter(_ char: Character, isShiftPressed: Bool) {
         let results = romajiConverter.feed(
             char,
             isShiftPressed: isShiftPressed,
