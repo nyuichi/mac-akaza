@@ -109,9 +109,9 @@ extension AkazaInputController {
     private func handleNumberKeyInConverting(number: Int, client: any IMKTextInput) -> Bool {
         guard case .converting(var session) = inputState else { return false }
         let pageSize = 9
-        let currentPage = session.focusedSelectedIndex / pageSize
-        let absoluteIndex = currentPage * pageSize + number  // number は 1-based、selectCandidate も 1-based
-        if session.selectCandidate(number: absoluteIndex) {
+        let currentPage = session.focusedDisplaySelectedIndex / pageSize
+        let displayIndex = currentPage * pageSize + (number - 1)
+        if session.selectDisplayedCandidate(at: displayIndex) {
             inputState = .converting(session)
             commitConvertingText(client: client)
         }
@@ -214,26 +214,18 @@ extension AkazaInputController {
     func showCandidateWindow(client: any IMKTextInput) {
         guard case .converting(let session) = inputState else { return }
 
-        let allCandidates = session.focusedCandidates
-        guard !allCandidates.isEmpty else {
+        let candidates = session.focusedDisplayCandidates
+        guard !candidates.isEmpty else {
             Self.candidateWindow?.hide()
             return
         }
-
-        // surfaceが同じ候補を除去（挿入順を保持）
-        var seen = Set<String>()
-        let candidates = allCandidates.filter { seen.insert($0.surface).inserted }
-
-        // 選択中候補のsurfaceに対応するインデックスを求める
-        let selectedSurface = allCandidates[session.focusedSelectedIndex].surface
-        let selectedIndex = candidates.firstIndex(where: { $0.surface == selectedSurface }) ?? 0
 
         var lineHeightRect = NSRect.zero
         client.attributes(forCharacterIndex: 0, lineHeightRectangle: &lineHeightRect)
 
         Self.candidateWindow?.show(
             candidates: candidates,
-            selectedIndex: selectedIndex,
+            selectedIndex: session.focusedDisplaySelectedIndex,
             cursorRect: lineHeightRect
         )
     }

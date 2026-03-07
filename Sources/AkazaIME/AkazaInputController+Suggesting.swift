@@ -112,29 +112,18 @@ extension AkazaInputController {
             return
         }
 
-        let allSurfaces = session.paths.map { path in
-            path.segments.map { $0.first?.surface ?? "" }.joined()
-        }
-
-        // 文節区切りが異なっても表層が同じになる候補を除去（挿入順を保持）
-        var seen = Set<String>()
-        let suggestions = allSurfaces.filter { seen.insert($0).inserted }
-
+        let suggestions = session.displayTexts
         guard !suggestions.isEmpty else {
             Self.candidateWindow?.hide()
             return
         }
-
-        // 選択中パスの表層に対応するインデックスを求める
-        let selectedSurface = allSurfaces[session.selectedPathIndex]
-        let selectedIndex = suggestions.firstIndex(of: selectedSurface) ?? 0
 
         var lineHeightRect = NSRect.zero
         client.attributes(forCharacterIndex: 0, lineHeightRectangle: &lineHeightRect)
 
         Self.candidateWindow?.showSuggestions(
             suggestions: suggestions,
-            selectedIndex: selectedIndex,
+            selectedIndex: session.selectedDisplayIndex,
             cursorRect: lineHeightRect
         )
     }

@@ -7,10 +7,7 @@ struct SuggestSession {
 
     var displayText: String {
         guard selectedPathIndex < paths.count else { return originalHiragana }
-        let path = paths[selectedPathIndex]
-        return path.segments.map { candidates in
-            candidates.first?.surface ?? ""
-        }.joined()
+        return Self.displayText(for: paths[selectedPathIndex])
     }
 
     var selectedCandidates: [(surface: String, yomi: String)] {
@@ -22,14 +19,20 @@ struct SuggestSession {
         }
     }
 
+    var displayTexts: [String] {
+        distinctPathProjection.displayedElements.map(Self.displayText(for:))
+    }
+
+    var selectedDisplayIndex: Int {
+        distinctPathProjection.displayIndex(forRawIndex: selectedPathIndex)
+    }
+
     mutating func nextPath() {
-        guard !paths.isEmpty else { return }
-        selectedPathIndex = (selectedPathIndex + 1) % paths.count
+        moveDisplayedPath(offset: 1)
     }
 
     mutating func previousPath() {
-        guard !paths.isEmpty else { return }
-        selectedPathIndex = (selectedPathIndex - 1 + paths.count) % paths.count
+        moveDisplayedPath(offset: -1)
     }
 
     func toConversionSession() -> ConversionSession {
@@ -38,5 +41,25 @@ struct SuggestSession {
         }
         let clauses = paths[selectedPathIndex].segments
         return ConversionSession(originalHiragana: originalHiragana, clauses: clauses)
+    }
+
+    private static func displayText(for path: KBestPath) -> String {
+        path.segments.map { candidates in
+            candidates.first?.surface ?? ""
+        }.joined()
+    }
+
+    private var distinctPathProjection: DistinctDisplayProjection<KBestPath> {
+        DistinctDisplayProjection(elements: paths, key: Self.displayText(for:))
+    }
+
+    private mutating func moveDisplayedPath(offset: Int) {
+        let projection = distinctPathProjection
+        guard !projection.isEmpty else { return }
+
+        let count = projection.displayedElements.count
+        let nextDisplayIndex = (selectedDisplayIndex + offset + count) % count
+        guard let rawIndex = projection.rawIndex(forDisplayIndex: nextDisplayIndex) else { return }
+        selectedPathIndex = rawIndex
     }
 }
