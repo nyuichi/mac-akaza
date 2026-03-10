@@ -31,7 +31,10 @@ fn main() -> Result<()> {
     info!("Starting akaza-server with model: {}", model_dir);
 
     let user_data = Arc::new(Mutex::new(match load_or_create_default_encryption_key() {
-        Ok(key) => UserData::load_from_default_path(Some(&key)).unwrap_or_default(),
+        Ok(key) => UserData::load_from_default_path(Some(&key)).unwrap_or_else(|e| {
+            log::warn!("Failed to load user data: {e}. Starting with empty user data.");
+            UserData::default()
+        }),
         Err(e) => {
             log::warn!(
                 "Failed to load/create encryption key: {e}. User data will not be persisted."
