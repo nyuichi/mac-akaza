@@ -289,7 +289,7 @@ class GeneralSettingsView: NSView {
 // MARK: - Actions
 
 extension GeneralSettingsView {
-    @objc func downloadDictButtonClicked(_ sender: NSButton) {
+    @objc private func downloadDictButtonClicked(_ sender: NSButton) {
         let index = sender.tag
         guard index < predefinedDownloadableDicts.count else { return }
         let config = predefinedDownloadableDicts[index]
@@ -304,7 +304,7 @@ extension GeneralSettingsView {
         }
     }
 
-    @objc func deleteDictButtonClicked(_ sender: NSButton) {
+    @objc private func deleteDictButtonClicked(_ sender: NSButton) {
         let index = sender.tag
         guard index < predefinedDownloadableDicts.count else { return }
         let config = predefinedDownloadableDicts[index]
@@ -318,7 +318,7 @@ extension GeneralSettingsView {
         akazaServerProcess.restart()
     }
 
-    @objc func addDictButtonClicked(_ sender: NSButton) {
+    @objc private func addDictButtonClicked(_ sender: NSButton) {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
@@ -331,7 +331,7 @@ extension GeneralSettingsView {
         }
     }
 
-    func selectEncoding(for url: URL) {
+    private func selectEncoding(for url: URL) {
         let alert = NSAlert()
         alert.messageText = "エンコーディングを選択"
         alert.informativeText = url.lastPathComponent
@@ -350,7 +350,7 @@ extension GeneralSettingsView {
         }
     }
 
-    @objc func removeDictButtonClicked(_ sender: NSButton) {
+    @objc private func removeDictButtonClicked(_ sender: NSButton) {
         let row = userDictTableView.selectedRow
         guard row >= 0 else { return }
         Settings.shared.additionalDictPaths.remove(at: row)
@@ -358,17 +358,17 @@ extension GeneralSettingsView {
         akazaServerProcess.restart()
     }
 
-    @objc func punctuationStyleChanged(_ sender: NSPopUpButton) {
+    @objc private func punctuationStyleChanged(_ sender: NSPopUpButton) {
         if let style = PunctuationStyle(rawValue: sender.indexOfSelectedItem) {
             Settings.shared.punctuationStyle = style
         }
     }
 
-    @objc func showPredictiveCandidatesChanged(_ sender: NSButton) {
+    @objc private func showPredictiveCandidatesChanged(_ sender: NSButton) {
         Settings.shared.showPredictiveCandidates = sender.state == .on
     }
 
-    func loadModelInfo() {
+    private func loadModelInfo() {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let info = akazaClient.modelInfoSync()
             DispatchQueue.main.async {
