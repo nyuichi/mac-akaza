@@ -7,7 +7,12 @@ extension AkazaInputController {
         let isShiftPressed = event.modifierFlags.contains(.shift)
 
         switch keyCode {
-        case 49, 125: // Space, Down arrow
+        case 49: // Space
+            if isShiftPressed {
+                return handlePreviousCandidateInConverting(client: client)
+            }
+            return handleNextCandidateInConverting(client: client)
+        case 125: // Down arrow
             return handleNextCandidateInConverting(client: client)
         case 126: // Up arrow
             return handlePreviousCandidateInConverting(client: client)
@@ -162,7 +167,7 @@ extension AkazaInputController {
     }
 
     func updateComposingMarkedText(client: any IMKTextInput) {
-        let preedit = composedHiragana + romajiConverter.pendingRomaji
+        let preedit = functionKeyState?.displayText ?? (composedHiragana + romajiConverter.pendingRomaji)
         if preedit.isEmpty {
             client.setMarkedText(
                 NSAttributedString(string: ""),

@@ -13,6 +13,9 @@ extension AkazaInputController {
             }
             return handleNextPathInSuggesting(client: client)
         case 49: // Space
+            if isShiftPressed {
+                return handlePreviousPathInSuggesting(client: client)
+            }
             return handleSpaceInSuggesting(client: client)
         case 36: // Enter
             return handleEnterInSuggesting(client: client)
