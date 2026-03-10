@@ -30,17 +30,15 @@ fn main() -> Result<()> {
 
     info!("Starting akaza-server with model: {}", model_dir);
 
-    let encryption_key = load_or_create_default_encryption_key()
-        .map(Some)
-        .unwrap_or_else(|e| {
+    let user_data = Arc::new(Mutex::new(match load_or_create_default_encryption_key() {
+        Ok(key) => UserData::load_from_default_path(Some(&key)).unwrap_or_default(),
+        Err(e) => {
             log::warn!(
-                "Failed to load/create encryption key: {e}. User stats will not be encrypted."
+                "Failed to load/create encryption key: {e}. User data will not be persisted."
             );
-            None
-        });
-    let user_data = Arc::new(Mutex::new(
-        UserData::load_from_default_path(encryption_key.as_deref()).unwrap_or_default(),
-    ));
+            UserData::default()
+        }
+    }));
 
     let mut dicts: Vec<DictConfig> = Vec::new();
     if let Ok(basedir) = xdg::BaseDirectories::with_prefix("akaza") {
