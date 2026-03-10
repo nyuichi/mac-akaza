@@ -1,7 +1,5 @@
 import Cocoa
 
-private let skkJisyoLURL = "https://raw.githubusercontent.com/skk-dev/dict/master/SKK-JISYO.L"
-
 class AkazaServerProcess {
     private var process: Process?
     private(set) var stdinPipe: Pipe?
@@ -13,57 +11,70 @@ class AkazaServerProcess {
     var onRestart: (() -> Void)?
     private var terminationObserver: NSObjectProtocol?
 
-    func skkJisyoLPath() -> URL? {
+    private func akazaDataDir() -> URL? {
         guard let xdgData = ProcessInfo.processInfo.environment["XDG_DATA_HOME"]
             .map({ URL(fileURLWithPath: $0) })
             ?? Optional(FileManager.default.homeDirectoryForCurrentUser
                 .appendingPathComponent(".local/share"))
         else { return nil }
-        return xdgData.appendingPathComponent("akaza/SKK-JISYO.L")
+        return xdgData.appendingPathComponent("akaza")
     }
 
-    func downloadSKKDictIfNeeded(completion: @escaping () -> Void) {
-        guard let dest = skkJisyoLPath() else {
-            completion()
+    func dictPath(for config: DownloadableDictConfig) -> URL? {
+        return akazaDataDir()?.appendingPathComponent(config.fileName)
+    }
+
+    func isDictDownloaded(_ config: DownloadableDictConfig) -> Bool {
+        guard let path = dictPath(for: config) else { return false }
+        return FileManager.default.fileExists(atPath: path.path)
+    }
+
+    func downloadDict(_ config: DownloadableDictConfig, completion: @escaping (Bool) -> Void) {
+        guard let dest = dictPath(for: config) else {
+            completion(false)
             return
         }
         guard !FileManager.default.fileExists(atPath: dest.path) else {
-            completion()
+            completion(true)
             return
         }
 
-        NSLog("AkazaIME: SKK-JISYO.L not found, downloading...")
+        NSLog("AkazaIME: \(config.fileName) not found, downloading...")
         let dirURL = dest.deletingLastPathComponent()
         do {
             try FileManager.default.createDirectory(at: dirURL, withIntermediateDirectories: true)
         } catch {
             NSLog("AkazaIME: failed to create directory \(dirURL.path): \(error)")
-            completion()
+            completion(false)
             return
         }
 
-        guard let url = URL(string: skkJisyoLURL) else {
-            completion()
-            return
-        }
-        URLSession.shared.downloadTask(with: url) { tmpURL, _, error in
+        URLSession.shared.downloadTask(with: config.downloadURL) { tmpURL, _, error in
             if let error = error {
-                NSLog("AkazaIME: failed to download SKK-JISYO.L: \(error)")
-                completion()
+                NSLog("AkazaIME: failed to download \(config.fileName): \(error)")
+                completion(false)
                 return
             }
             guard let tmpURL = tmpURL else {
-                completion()
+                completion(false)
                 return
             }
             do {
                 try FileManager.default.moveItem(at: tmpURL, to: dest)
-                NSLog("AkazaIME: SKK-JISYO.L downloaded to \(dest.path)")
+                NSLog("AkazaIME: \(config.fileName) downloaded to \(dest.path)")
+                completion(true)
             } catch {
-                NSLog("AkazaIME: failed to save SKK-JISYO.L: \(error)")
+                NSLog("AkazaIME: failed to save \(config.fileName): \(error)")
+                completion(false)
             }
-            completion()
         }.resume()
+    }
+
+    func deleteDict(_ config: DownloadableDictConfig) throws {
+        guard let path = dictPath(for: config) else { return }
+        guard FileManager.default.fileExists(atPath: path.path) else { return }
+        try FileManager.default.removeItem(at: path)
+        NSLog("AkazaIME: \(config.fileName) deleted")
     }
 
     func start() {
@@ -75,9 +86,14 @@ class AkazaServerProcess {
             return
         }
 
+        let downloadedPaths = predefinedDownloadableDicts.compactMap { config -> String? in
+            guard isDictDownloaded(config), let path = dictPath(for: config) else { return nil }
+            return "\(path.path):\(config.encoding)"
+        }
+
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: serverPath)
-        proc.arguments = [modelPath] + Settings.shared.additionalDictPaths
+        proc.arguments = [modelPath] + downloadedPaths + Settings.shared.additionalDictPaths
 
         let stdin = Pipe()
         let stdout = Pipe()
