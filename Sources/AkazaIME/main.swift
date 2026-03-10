@@ -42,7 +42,8 @@ let akazaClient = JSONRPCClient(serverProcess: akazaServerProcess)
 
 // SKK-JISYO.L がなければバックグラウンドでダウンロードしてから起動
 // 既にある場合はそのまま即起動
-akazaServerProcess.downloadSKKDictIfNeeded {
+let skkJisyoLConfig = predefinedDownloadableDicts.first(where: { $0.id == "skk-jisyo-l" })!
+akazaServerProcess.downloadDict(skkJisyoLConfig) { _ in
     DispatchQueue.main.async {
         akazaServerProcess.start()
         akazaClient.startReaderLoop()

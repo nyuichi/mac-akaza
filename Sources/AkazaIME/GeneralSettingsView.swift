@@ -9,24 +9,23 @@ class GeneralSettingsView: NSView {
     )
     private let modelVersionLabel = NSTextField(labelWithString: "読み込み中...")
     private let modelBuildTimestampLabel = NSTextField(labelWithString: "")
-    private let skkJisyoStatusLabel = NSTextField(labelWithString: "確認中...")
-    private let skkJisyoDownloadButton = NSButton(title: "ダウンロード", target: nil, action: nil)
     private let userDictTableView = NSTableView()
     private let addDictButton = NSButton(title: "+ 追加", target: nil, action: nil)
     private let removeDictButton = NSButton(title: "- 削除", target: nil, action: nil)
+
+    // ダウンロード可能辞書の行ごとのステータス更新クロージャ
+    private var dictRowUpdaters: [() -> Void] = []
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         setupUI()
         loadModelInfo()
-        updateSKKJisyoStatus()
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         setupUI()
         loadModelInfo()
-        updateSKKJisyoStatus()
     }
 
     private func setupUI() {
@@ -58,9 +57,11 @@ class GeneralSettingsView: NSView {
             punctuationPopUp.leadingAnchor.constraint(equalTo: punctuationLabel.trailingAnchor, constant: 8),
             punctuationPopUp.widthAnchor.constraint(greaterThanOrEqualToConstant: 200),
 
-            showPredictiveCandidatesCheckbox.topAnchor.constraint(equalTo: punctuationLabel.bottomAnchor, constant: 12),
+            showPredictiveCandidatesCheckbox.topAnchor.constraint(
+                equalTo: punctuationLabel.bottomAnchor, constant: 12),
             showPredictiveCandidatesCheckbox.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
-            showPredictiveCandidatesCheckbox.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -20)
+            showPredictiveCandidatesCheckbox.trailingAnchor.constraint(
+                lessThanOrEqualTo: trailingAnchor, constant: -20)
         ])
 
         let lastModelView = setupModelInfoViews(below: showPredictiveCandidatesCheckbox)
@@ -153,34 +154,85 @@ class GeneralSettingsView: NSView {
         sysLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(sysLabel)
 
-        let skkLabel = NSTextField(labelWithString: "SKK-JISYO.L")
-        skkLabel.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(skkLabel)
-
-        skkJisyoStatusLabel.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(skkJisyoStatusLabel)
-
-        skkJisyoDownloadButton.translatesAutoresizingMaskIntoConstraints = false
-        skkJisyoDownloadButton.target = self
-        skkJisyoDownloadButton.action = #selector(downloadSKKJisyoButtonClicked(_:))
-        addSubview(skkJisyoDownloadButton)
-
         NSLayoutConstraint.activate([
             sysLabel.topAnchor.constraint(equalTo: aboveView.bottomAnchor, constant: 8),
-            sysLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
-
-            skkLabel.topAnchor.constraint(equalTo: sysLabel.bottomAnchor, constant: 6),
-            skkLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
-
-            skkJisyoStatusLabel.centerYAnchor.constraint(equalTo: skkLabel.centerYAnchor),
-            skkJisyoStatusLabel.leadingAnchor.constraint(equalTo: skkLabel.trailingAnchor, constant: 12),
-
-            skkJisyoDownloadButton.centerYAnchor.constraint(equalTo: skkLabel.centerYAnchor),
-            skkJisyoDownloadButton.leadingAnchor.constraint(
-                equalTo: skkJisyoStatusLabel.trailingAnchor, constant: 8)
+            sysLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20)
         ])
 
-        return skkLabel
+        var lastView: NSView = sysLabel
+        dictRowUpdaters = []
+
+        for config in predefinedDownloadableDicts {
+            let (rowView, update) = makeDownloadableDictRow(config: config)
+            dictRowUpdaters.append(update)
+
+            NSLayoutConstraint.activate([
+                rowView.topAnchor.constraint(equalTo: lastView.bottomAnchor, constant: 6),
+                rowView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
+                rowView.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -20)
+            ])
+            lastView = rowView
+        }
+
+        return lastView
+    }
+
+    private func makeDownloadableDictRow(
+        config: DownloadableDictConfig
+    ) -> (view: NSView, update: () -> Void) {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(container)
+
+        let nameLabel = NSTextField(labelWithString: config.displayName)
+        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(nameLabel)
+
+        let statusLabel = NSTextField(labelWithString: "確認中...")
+        statusLabel.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(statusLabel)
+
+        let actionButton = NSButton(title: "", target: nil, action: nil)
+        actionButton.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(actionButton)
+
+        NSLayoutConstraint.activate([
+            nameLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            nameLabel.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            nameLabel.widthAnchor.constraint(equalToConstant: 160),
+
+            statusLabel.leadingAnchor.constraint(equalTo: nameLabel.trailingAnchor, constant: 12),
+            statusLabel.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            statusLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 80),
+
+            actionButton.leadingAnchor.constraint(equalTo: statusLabel.trailingAnchor, constant: 8),
+            actionButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            actionButton.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+
+            container.heightAnchor.constraint(equalToConstant: 24)
+        ])
+
+        let updateStatus = { [weak statusLabel, weak actionButton] in
+            guard let statusLabel = statusLabel, let actionButton = actionButton else { return }
+            let downloaded = akazaServerProcess.isDictDownloaded(config)
+            if downloaded {
+                statusLabel.stringValue = "読み込み済み"
+                statusLabel.textColor = .systemGreen
+                actionButton.title = "削除"
+                actionButton.action = #selector(GeneralSettingsView.deleteDictButtonClicked(_:))
+            } else {
+                statusLabel.stringValue = "未ダウンロード"
+                statusLabel.textColor = .systemOrange
+                actionButton.title = "ダウンロード"
+                actionButton.action = #selector(GeneralSettingsView.downloadDictButtonClicked(_:))
+            }
+        }
+
+        actionButton.target = self
+        actionButton.tag = predefinedDownloadableDicts.firstIndex(where: { $0.id == config.id }) ?? 0
+        updateStatus()
+
+        return (container, updateStatus)
     }
 
     private func setupUserDictSection(below aboveView: NSView) {
@@ -232,32 +284,41 @@ class GeneralSettingsView: NSView {
         ])
     }
 
-    // MARK: - Private actions
+}
 
-    fileprivate func updateSKKJisyoStatus() {
-        let exists = akazaServerProcess.skkJisyoLPath()
-            .map { FileManager.default.fileExists(atPath: $0.path) } ?? false
-        if exists {
-            skkJisyoStatusLabel.stringValue = "読み込み済み"
-            skkJisyoStatusLabel.textColor = .systemGreen
-        } else {
-            skkJisyoStatusLabel.stringValue = "未ダウンロード"
-            skkJisyoStatusLabel.textColor = .systemOrange
-        }
-    }
+// MARK: - Actions
 
-    @objc private func downloadSKKJisyoButtonClicked(_ sender: NSButton) {
+extension GeneralSettingsView {
+    @objc func downloadDictButtonClicked(_ sender: NSButton) {
+        let index = sender.tag
+        guard index < predefinedDownloadableDicts.count else { return }
+        let config = predefinedDownloadableDicts[index]
+
         sender.isEnabled = false
-        akazaServerProcess.downloadSKKDictIfNeeded {
+        akazaServerProcess.downloadDict(config) { _ in
             DispatchQueue.main.async { [weak self] in
                 sender.isEnabled = true
-                self?.updateSKKJisyoStatus()
+                self?.dictRowUpdaters[index]()
                 akazaServerProcess.restart()
             }
         }
     }
 
-    @objc private func addDictButtonClicked(_ sender: NSButton) {
+    @objc func deleteDictButtonClicked(_ sender: NSButton) {
+        let index = sender.tag
+        guard index < predefinedDownloadableDicts.count else { return }
+        let config = predefinedDownloadableDicts[index]
+
+        do {
+            try akazaServerProcess.deleteDict(config)
+        } catch {
+            NSLog("AkazaIME: failed to delete \(config.fileName): \(error)")
+        }
+        dictRowUpdaters[index]()
+        akazaServerProcess.restart()
+    }
+
+    @objc func addDictButtonClicked(_ sender: NSButton) {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
@@ -270,7 +331,7 @@ class GeneralSettingsView: NSView {
         }
     }
 
-    fileprivate func selectEncoding(for url: URL) {
+    func selectEncoding(for url: URL) {
         let alert = NSAlert()
         alert.messageText = "エンコーディングを選択"
         alert.informativeText = url.lastPathComponent
@@ -289,7 +350,7 @@ class GeneralSettingsView: NSView {
         }
     }
 
-    @objc private func removeDictButtonClicked(_ sender: NSButton) {
+    @objc func removeDictButtonClicked(_ sender: NSButton) {
         let row = userDictTableView.selectedRow
         guard row >= 0 else { return }
         Settings.shared.additionalDictPaths.remove(at: row)
@@ -297,19 +358,17 @@ class GeneralSettingsView: NSView {
         akazaServerProcess.restart()
     }
 
-    @objc private func punctuationStyleChanged(_ sender: NSPopUpButton) {
+    @objc func punctuationStyleChanged(_ sender: NSPopUpButton) {
         if let style = PunctuationStyle(rawValue: sender.indexOfSelectedItem) {
             Settings.shared.punctuationStyle = style
         }
     }
 
-    @objc private func showPredictiveCandidatesChanged(_ sender: NSButton) {
+    @objc func showPredictiveCandidatesChanged(_ sender: NSButton) {
         Settings.shared.showPredictiveCandidates = sender.state == .on
     }
 
-    // MARK: - Private helpers
-
-    private func loadModelInfo() {
+    func loadModelInfo() {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let info = akazaClient.modelInfoSync()
             DispatchQueue.main.async {
