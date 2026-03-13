@@ -12,6 +12,9 @@ extension AkazaInputController {
     }
 
     func handleBackspaceEvent(event: NSEvent, client: any IMKTextInput) -> Bool {
+        if functionKeyState != nil {
+            return handleEscapeInFunctionKey(client: client)
+        }
         switch inputState {
         case .composing:
             return handleBackspaceInComposing(client: client)

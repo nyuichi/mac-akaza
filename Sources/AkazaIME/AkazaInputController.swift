@@ -46,12 +46,8 @@ class AkazaInputController: IMKInputController {
     // MARK: - Main event handler
 
     override func handle(_ event: NSEvent!, client sender: Any!) -> Bool {
-        guard let event = event, event.type == .keyDown else {
-            return false
-        }
-        guard let client = sender as? (any IMKTextInput) else {
-            return false
-        }
+        guard let event = event, event.type == .keyDown else { return false }
+        guard let client = sender as? (any IMKTextInput) else { return false }
 
         let keyCode = event.keyCode
         NSLog("AkazaIME: keyCode=\(keyCode) characters=\(event.characters ?? "")")
@@ -61,38 +57,11 @@ class AkazaInputController: IMKInputController {
         }
 
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-
-        var resolvedFunctionKey: UInt16?
-        if Self.isFunctionKey(keyCode) {
-            resolvedFunctionKey = keyCode
-        } else if flags == .control {
-            resolvedFunctionKey = switch keyCode {
-            case 38: 97   // Ctrl+J → F6 (ひらがな)
-            case 40: 98   // Ctrl+K → F7 (カタカナ)
-            case 37: 101  // Ctrl+L → F9 (全角英数)
-            case 41: 100  // Ctrl+; → F8 (半角カタカナ)
-            case 39: 109  // Ctrl+: → F10 (半角英数) ※JISキーボード
-            default: nil
-            }
-        }
-        if let fk = resolvedFunctionKey, hasPreedit {
-            return handleFunctionKeyFromAnyState(keyCode: fk, client: client)
+        if let functionKeyCode = resolveFunctionKeyCode(keyCode: keyCode, flags: flags), hasPreedit {
+            return handleFunctionKeyFromAnyState(keyCode: functionKeyCode, client: client)
         }
         if Self.isFunctionKey(keyCode) { return false }
-
-        if flags.contains(.command) || flags.contains(.control) || flags.contains(.option) {
-            if hasPreedit { commitCurrentState(client: client) }
-            return false
-        }
-
-        switch inputState {
-        case .composing:
-            return handleComposingState(event: event, keyCode: keyCode, client: client)
-        case .suggesting:
-            return handleSuggestingState(event: event, keyCode: keyCode, client: client)
-        case .converting:
-            return handleConvertingState(event: event, keyCode: keyCode, client: client)
-        }
+        return handleNonFunctionKey(flags: flags, event: event, keyCode: keyCode, client: client)
     }
 
     // MARK: - Composing state
@@ -123,9 +92,7 @@ class AkazaInputController: IMKInputController {
     }
 
     private func handleSpaceInComposing(client: any IMKTextInput) -> Bool {
-        guard hasPreedit else {
-            return false
-        }
+        guard hasPreedit else { return false }
 
         var text = composedHiragana
         if let flushed = romajiConverter.flush() {
@@ -216,9 +183,7 @@ class AkazaInputController: IMKInputController {
     }
 
     func handleCharacterInput(event: NSEvent, client: any IMKTextInput) -> Bool {
-        guard let characters = event.characters, !characters.isEmpty else {
-            return false
-        }
+        guard let characters = event.characters, !characters.isEmpty else { return false }
         for char in characters {
             guard let scalar = char.unicodeScalars.first?.value else { continue }
             if scalar == 0x08 { return handleBackspaceInComposing(client: client) }
@@ -243,12 +208,72 @@ class AkazaInputController: IMKInputController {
         inputHistory.append(snapshot)
     }
 
-    private func clearInputHistory() {
+    func clearInputHistory() {
         inputHistory.removeAll()
     }
+}
 
-    // MARK: - Commit helpers
+// MARK: - Key event routing
 
+extension AkazaInputController {
+    /// ファンクションキーコードを解決する。
+    /// JISキーボード: Ctrl+: (keyCode 39) → F10
+    /// USキーボード: Ctrl+Shift+; (keyCode 41) → `:` → F10
+    private func resolveFunctionKeyCode(
+        keyCode: UInt16,
+        flags: NSEvent.ModifierFlags
+    ) -> UInt16? {
+        if Self.isFunctionKey(keyCode) { return keyCode }
+        return resolveCtrlShortcut(keyCode: keyCode, flags: flags)
+    }
+
+    private func resolveCtrlShortcut(
+        keyCode: UInt16,
+        flags: NSEvent.ModifierFlags
+    ) -> UInt16? {
+        if flags == .control {
+            return switch keyCode {
+            case 38: 97   // Ctrl+J → F6 (ひらがな)
+            case 40: 98   // Ctrl+K → F7 (カタカナ)
+            case 37: 101  // Ctrl+L → F9 (全角英数)
+            case 41: 100  // Ctrl+; → F8 (半角カタカナ)
+            case 39: 109  // Ctrl+: → F10 (半角英数) ※JISキーボード
+            default: nil
+            }
+        }
+        if flags == [.control, .shift] {
+            return switch keyCode {
+            case 41: 109  // Ctrl+Shift+; → Ctrl+: → F10 ※USキーボード
+            default: nil
+            }
+        }
+        return nil
+    }
+
+    private func handleNonFunctionKey(
+        flags: NSEvent.ModifierFlags,
+        event: NSEvent,
+        keyCode: UInt16,
+        client: any IMKTextInput
+    ) -> Bool {
+        if flags.contains(.command) || flags.contains(.control) || flags.contains(.option) {
+            if hasPreedit { commitCurrentState(client: client) }
+            return false
+        }
+        switch inputState {
+        case .composing:
+            return handleComposingState(event: event, keyCode: keyCode, client: client)
+        case .suggesting:
+            return handleSuggestingState(event: event, keyCode: keyCode, client: client)
+        case .converting:
+            return handleConvertingState(event: event, keyCode: keyCode, client: client)
+        }
+    }
+}
+
+// MARK: - Commit helpers
+
+extension AkazaInputController {
     func commitCurrentState(client: any IMKTextInput) {
         switch inputState {
         case .composing:
@@ -301,21 +326,25 @@ class AkazaInputController: IMKInputController {
         clearInputHistory()
         Self.candidateWindow.hide()
     }
+}
 
-    // MARK: - Punctuation style
+// MARK: - Punctuation style
 
-    private func applyPunctuationStyle(_ text: String) -> String {
+extension AkazaInputController {
+    func applyPunctuationStyle(_ text: String) -> String {
         guard Settings.shared.punctuationStyle == .commaPeriod else { return text }
         return text.replacingOccurrences(of: "。", with: "．").replacingOccurrences(of: "、", with: "，")
     }
+}
 
-    // MARK: - Menu
+// MARK: - Menu
 
+extension AkazaInputController {
     override func menu() -> NSMenu! {
         let menu = NSMenu()
-        let settingsItem = NSMenuItem(title: "設定...", action: #selector(openSettings(_:)), keyEquivalent: "")
-        settingsItem.target = self
-        menu.addItem(settingsItem)
+        let item = NSMenuItem(title: "設定...", action: #selector(openSettings(_:)), keyEquivalent: "")
+        item.target = self
+        menu.addItem(item)
         return menu
     }
 
@@ -324,100 +353,12 @@ class AkazaInputController: IMKInputController {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    // MARK: - IMKInputController overrides
-
     override func deactivateServer(_ sender: Any!) {
         cancelPendingSuggest()
-        if let client = sender as? (any IMKTextInput) {
-            if hasPreedit {
-                commitCurrentState(client: client)
-            }
+        if let client = sender as? (any IMKTextInput), hasPreedit {
+            commitCurrentState(client: client)
         }
         resetToComposing()
         super.deactivateServer(sender)
-    }
-}
-
-// MARK: - Suggest scheduling
-
-extension AkazaInputController {
-    func scheduleSuggest(client: any IMKTextInput) {
-        cancelPendingSuggest()
-
-        // 直接入力モード中はサジェストを抑制する
-        guard !isDirectInputMode else {
-            Self.candidateWindow.hide()
-            return
-        }
-
-        let yomi = composedHiragana
-        guard !yomi.isEmpty else {
-            latestSuggestYomi = nil
-            Self.candidateWindow.hide()
-            return
-        }
-        guard yomi != latestSuggestYomi else { return }
-
-        latestSuggestYomi = yomi
-        let requestID = akazaClient.convertKBestAsync(yomi: yomi, maxPaths: Settings.shared.suggestMaxPaths) { [weak self] paths in
-            guard let self = self else { return }
-            guard case .composing = self.inputState else { return }
-            guard let paths = paths, !paths.isEmpty else { return }
-            guard self.composedHiragana == yomi else { return }
-
-            let session = SuggestSession(originalHiragana: yomi, paths: paths)
-            self.inputState = .suggesting(session)
-            self.updateSuggestingMarkedText(client: client)
-            self.showSuggestCandidateWindow(client: client)
-        }
-        pendingSuggestRequestID = requestID
-    }
-
-    func cancelPendingSuggest() {
-        if let id = pendingSuggestRequestID {
-            akazaClient.cancelRequest(id: id)
-            pendingSuggestRequestID = nil
-        }
-    }
-}
-
-// MARK: - Character processing helpers
-
-private extension AkazaInputController {
-    func processCharacter(_ char: Character, scalar: UInt32) {
-        if scalar >= 0x41 && scalar <= 0x5A {
-            // 大文字 ASCII: 直接入力モードへ移行
-            enterDirectInputMode(char)
-        } else if isDirectInputMode && scalar >= 0x21 && scalar <= 0x7E {
-            // 直接入力モード中の printable ASCII: ローマ字変換せず preedit に積む
-            composedHiragana += String(char)
-        } else {
-            isDirectInputMode = false
-            feedToRomajiConverter(char)
-        }
-    }
-
-    func enterDirectInputMode(_ char: Character) {
-        if !isDirectInputMode {
-            if let flushed = romajiConverter.flush() {
-                composedHiragana += flushed
-            }
-            isDirectInputMode = true
-        }
-        composedHiragana += String(char)
-    }
-
-    func feedToRomajiConverter(_ char: Character) {
-        let results = romajiConverter.feed(char)
-        for result in results {
-            switch result {
-            case .converted(let hiragana):
-                composedHiragana += applyPunctuationStyle(hiragana)
-            case .pending:
-                break
-            case .passthrough(let character):
-                composedHiragana += String(character)
-            }
-        }
     }
 }
