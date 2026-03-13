@@ -39,27 +39,15 @@ extension AkazaInputController {
         }
 
         guard !hiragana.isEmpty else { return true }
-
-        let converted: String
-        switch keyCode {
-        case 97: // F6: ひらがな
-            converted = hiragana
-        case 98: // F7: カタカナ（全角）
-            converted = hiragana.toKatakana()
-        case 100: // F8: 半角カタカナ
-            converted = hiragana.toHalfWidthKatakana()
-        case 101: // F9: 全角英数
-            converted = romaji.toFullWidthRomaji()
-        case 109: // F10: 半角英数
-            converted = romaji
-        default:
-            return false
-        }
-
-        guard !converted.isEmpty else { return true }
+        guard let converted = convertedText(keyCode: keyCode, hiragana: hiragana, romaji: romaji),
+              !converted.isEmpty else { return true }
 
         resetToComposing()
-        functionKeyState = FunctionKeyState(originalHiragana: hiragana, originalRawRomajiInput: romaji, displayText: converted)
+        functionKeyState = FunctionKeyState(
+            originalHiragana: hiragana,
+            originalRawRomajiInput: romaji,
+            displayText: converted
+        )
         updateComposingMarkedText(client: client)
         return true
     }
@@ -78,6 +66,17 @@ extension AkazaInputController {
         updateComposingMarkedText(client: client)
         scheduleSuggest(client: client)
         return true
+    }
+
+    private func convertedText(keyCode: UInt16, hiragana: String, romaji: String) -> String? {
+        switch keyCode {
+        case 97: return hiragana                        // F6: ひらがな
+        case 98: return hiragana.toKatakana()           // F7: カタカナ（全角）
+        case 100: return hiragana.toHalfWidthKatakana() // F8: 半角カタカナ
+        case 101: return romaji.toFullWidthRomaji()     // F9: 全角英数
+        case 109: return romaji                         // F10: 半角英数
+        default: return nil
+        }
     }
 }
 
