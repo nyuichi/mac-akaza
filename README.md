@@ -73,3 +73,5 @@ make install && killall AkazaIME
 
 - [akaza](https://github.com/akaza-im/akaza) - Rust 製かな漢字変換エンジン (コア)
 - [akaza-default-model](https://github.com/akaza-im/akaza-default-model) - デフォルト言語モデル
+- [TypoIME](https://github.com/toshi-pono/TypoIME) - Swift 製 macOS IME の参考実装
+- [GyaIM](https://masui.github.io/GyaimMotion/)
