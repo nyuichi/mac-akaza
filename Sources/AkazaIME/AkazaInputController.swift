@@ -1,6 +1,10 @@
 import Cocoa
 import InputMethodKit
 
+extension Notification.Name {
+    static let romkanTableDidChange = Notification.Name("AkazaIMERomkanTableDidChange")
+}
+
 struct ComposingSnapshot {
     let composedHiragana: String
     let romajiBuffer: String
@@ -11,11 +15,30 @@ struct ComposingSnapshot {
 class AkazaInputController: IMKInputController {
     var composedHiragana: String = ""
     var rawRomajiInput: String = ""
-    let romajiConverter = RomajiConverter()
+    let romajiConverter = RomajiConverter(tableName: Settings.shared.romkanTable)
     var inputState: InputState = .composing
     static let candidateWindow = CandidateWindowController()
     var inputHistory: [ComposingSnapshot] = []
     var functionKeyState: FunctionKeyState?
+
+    override init!(server: IMKServer!, delegate: Any!, client inputClient: Any!) {
+        super.init(server: server, delegate: delegate, client: inputClient)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleRomkanTableDidChange),
+            name: .romkanTableDidChange,
+            object: nil
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self, name: .romkanTableDidChange, object: nil)
+    }
+
+    @objc private func handleRomkanTableDidChange() {
+        resetToComposing()
+        romajiConverter.reload(tableName: Settings.shared.romkanTable)
+    }
 
     var pendingSuggestRequestID: Int?
     var latestSuggestYomi: String?
