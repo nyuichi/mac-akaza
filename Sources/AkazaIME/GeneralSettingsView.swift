@@ -2,6 +2,7 @@ import Cocoa
 
 class GeneralSettingsView: NSView {
     private let punctuationPopUp = NSPopUpButton()
+    let romkanPopUp = NSPopUpButton()
     private let showPredictiveCandidatesCheckbox = NSButton(
         checkboxWithTitle: "推測候補表示",
         target: nil,
@@ -43,6 +44,8 @@ class GeneralSettingsView: NSView {
         punctuationPopUp.action = #selector(punctuationStyleChanged(_:))
         addSubview(punctuationPopUp)
 
+        let romkanLabel = setupRomkanControls()
+
         showPredictiveCandidatesCheckbox.translatesAutoresizingMaskIntoConstraints = false
         showPredictiveCandidatesCheckbox.state = Settings.shared.showPredictiveCandidates ? .on : .off
         showPredictiveCandidatesCheckbox.target = self
@@ -52,13 +55,22 @@ class GeneralSettingsView: NSView {
         NSLayoutConstraint.activate([
             punctuationLabel.topAnchor.constraint(equalTo: topAnchor, constant: 20),
             punctuationLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
+            punctuationLabel.widthAnchor.constraint(equalToConstant: 90),
 
             punctuationPopUp.centerYAnchor.constraint(equalTo: punctuationLabel.centerYAnchor),
             punctuationPopUp.leadingAnchor.constraint(equalTo: punctuationLabel.trailingAnchor, constant: 8),
             punctuationPopUp.widthAnchor.constraint(greaterThanOrEqualToConstant: 200),
 
+            romkanLabel.topAnchor.constraint(equalTo: punctuationLabel.bottomAnchor, constant: 12),
+            romkanLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
+            romkanLabel.widthAnchor.constraint(equalToConstant: 90),
+
+            romkanPopUp.centerYAnchor.constraint(equalTo: romkanLabel.centerYAnchor),
+            romkanPopUp.leadingAnchor.constraint(equalTo: romkanLabel.trailingAnchor, constant: 8),
+            romkanPopUp.widthAnchor.constraint(greaterThanOrEqualToConstant: 200),
+
             showPredictiveCandidatesCheckbox.topAnchor.constraint(
-                equalTo: punctuationLabel.bottomAnchor, constant: 12),
+                equalTo: romkanLabel.bottomAnchor, constant: 12),
             showPredictiveCandidatesCheckbox.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
             showPredictiveCandidatesCheckbox.trailingAnchor.constraint(
                 lessThanOrEqualTo: trailingAnchor, constant: -20)
@@ -377,24 +389,5 @@ extension GeneralSettingsView {
                 self.modelBuildTimestampLabel.stringValue = info?.buildTimestamp ?? "(不明)"
             }
         }
-    }
-}
-
-// MARK: - NSTableViewDataSource / NSTableViewDelegate
-
-extension GeneralSettingsView: NSTableViewDataSource, NSTableViewDelegate {
-    func numberOfRows(in tableView: NSTableView) -> Int {
-        Settings.shared.additionalDictPaths.count
-    }
-
-    func tableView(_ tableView: NSTableView, objectValueFor tableColumn: NSTableColumn?, row: Int) -> Any? {
-        let path = Settings.shared.additionalDictPaths[row]
-        if let colonRange = path.range(of: ":", options: .backwards) {
-            let filePath = String(path[path.startIndex..<colonRange.lowerBound])
-            let encoding = String(path[colonRange.upperBound...])
-            let encodingLabel = encoding == "eucjp" ? "EUC-JP" : "UTF-8"
-            return "\(filePath) (\(encodingLabel))"
-        }
-        return path
     }
 }
