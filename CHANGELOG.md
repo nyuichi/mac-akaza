@@ -1,5 +1,15 @@
 # Changelog
 
+## [v2026.325.0](https://github.com/akaza-im/mac-akaza/compare/v2026.308.0...v2026.325.0) - 2026-03-25
+- chore: upgrade libakaza to v2026.310.0 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/71
+- feat: 複数のSKK辞書をダウンロード可能にする設定UIを追加 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/73
+- fix: レビュー指摘対応 - 強制アンラップ除去とアクセス修飾子を修正 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/75
+- feat: macOS標準IME互換のファンクションキー・ショートカットキーに対応 by @gunyarakun in https://github.com/akaza-im/mac-akaza/pull/72
+- fix: ファンクションキー状態でのBackspace修正・USキーボード対応 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/76
+- docs: split README into user-facing README and developer HACKING.md by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/77
+- chore: upgrade libakaza to v2026.313.0 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/78
+- feat: 設定画面からローマ字テーブルを切り替えられるようにする by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/79
+
 ## [v2026.308.0](https://github.com/akaza-im/mac-akaza/compare/v2026.304.0...v2026.308.0) - 2026-03-08
 - Add predictive candidate visibility setting by @nyuichi in https://github.com/akaza-im/mac-akaza/pull/63
 - fix: remove redundant sources list from test target in Package.swift by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/69
