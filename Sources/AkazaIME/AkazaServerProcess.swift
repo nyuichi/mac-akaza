@@ -107,7 +107,7 @@ class AkazaServerProcess {
 
             guard self.shouldRestart else { return }
 
-            let delay = min(pow(2.0, Double(self.restartCount)), 60.0)
+            let delay = min(pow(2.0, Double(self.restartCount)), 15.0)
             self.restartCount += 1
             NSLog("AkazaIME: restarting akaza-server in \(delay)s (attempt \(self.restartCount))")
 
