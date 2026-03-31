@@ -1,5 +1,10 @@
 # Changelog
 
+## [v2026.331.0](https://github.com/akaza-im/mac-akaza/compare/v2026.327.0...v2026.331.0) - 2026-03-31
+- fix: akaza-server クラッシュ時の SIGPIPE によるIMEプロセス終了を修正 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/80
+- fix: 変換リクエストを非同期化してメインスレッドのブロックを解消 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/82
+- fix: akaza-server 再起動バックオフの上限を 60 秒から 15 秒に短縮 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/83
+
 ## [v2026.325.0](https://github.com/akaza-im/mac-akaza/compare/v2026.308.0...v2026.325.0) - 2026-03-25
 - chore: upgrade libakaza to v2026.310.0 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/71
 - feat: 複数のSKK辞書をダウンロード可能にする設定UIを追加 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/73
