@@ -33,8 +33,10 @@ extension AkazaInputController {
         switch keyCode {
         case 123: // Left arrow
             return isShiftPressed ? handleShrinkClauseLeft(client: client) : handlePreviousClauseInConverting(client: client)
-        default: // Right arrow (124)
+        case 124: // Right arrow
             return isShiftPressed ? handleExtendClauseRight(client: client) : handleNextClauseInConverting(client: client)
+        default:
+            return false
         }
     }
 

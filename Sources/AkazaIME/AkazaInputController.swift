@@ -139,6 +139,7 @@ class AkazaInputController: IMKInputController {
         updateComposingMarkedText(client: client)
         Self.candidateWindow.hide()
 
+        cancelPendingSuggest()
         akazaClient.convertAsync(yomi: text) { [weak self] result in
             guard let self = self else { return }
             // 変換待ち中に別のキーが押されて状態が変わった場合は無視
