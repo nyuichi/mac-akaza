@@ -176,9 +176,9 @@ class JSONRPCClient {
             do {
                 var data = try JSONSerialization.data(withJSONObject: request)
                 data.append(0x0A)
-                stdin.fileHandleForWriting.write(data)
+                try stdin.fileHandleForWriting.write(contentsOf: data)
             } catch {
-                NSLog("AkazaIME: failed to serialize JSON-RPC request: \(error)")
+                NSLog("AkazaIME: failed to write JSON-RPC request: \(error)")
                 self.completePending(id: requestID, data: nil)
             }
         }
