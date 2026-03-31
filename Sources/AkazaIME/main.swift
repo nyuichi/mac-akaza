@@ -1,5 +1,9 @@
 import Cocoa
+import Darwin
 import InputMethodKit
+
+// akaza-server クラッシュ時にパイプ書き込みで SIGPIPE によりプロセスが終了するのを防ぐ
+signal(SIGPIPE, SIG_IGN)
 
 private func setupLogging() {
     let logDir = FileManager.default.homeDirectoryForCurrentUser
