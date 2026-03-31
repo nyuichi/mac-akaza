@@ -133,20 +133,26 @@ class AkazaInputController: IMKInputController {
             return true
         }
 
-        guard let result = akazaClient.convertSync(yomi: text), !result.isEmpty else {
-            composedHiragana = text
-            clearInputHistory()
-            updateComposingMarkedText(client: client)
-            Self.candidateWindow.hide()
-            return true
-        }
-
-        let session = ConversionSession(originalHiragana: text, clauses: result)
-        inputState = .converting(session)
-        composedHiragana = ""
+        // 変換結果が返るまでひらがなのままマークアップして表示
+        composedHiragana = text
         clearInputHistory()
-        updateConvertingMarkedText(client: client)
-        updateConversionCandidateWindow(client: client, trigger: .conversionStarted)
+        updateComposingMarkedText(client: client)
+        Self.candidateWindow.hide()
+
+        cancelPendingSuggest()
+        akazaClient.convertAsync(yomi: text) { [weak self] result in
+            guard let self = self else { return }
+            // 変換待ち中に別のキーが押されて状態が変わった場合は無視
+            guard case .composing = self.inputState else { return }
+            guard self.composedHiragana == text else { return }
+            guard let result = result, !result.isEmpty else { return }
+
+            let session = ConversionSession(originalHiragana: text, clauses: result)
+            self.inputState = .converting(session)
+            self.composedHiragana = ""
+            self.updateConvertingMarkedText(client: client)
+            self.updateConversionCandidateWindow(client: client, trigger: .conversionStarted)
+        }
         return true
     }
 
@@ -334,7 +340,7 @@ extension AkazaInputController {
         guard case .converting(let session) = inputState else { return }
         let text = session.committedText
         client.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
-        akazaClient.learnSync(candidates: session.selectedCandidates)
+        akazaClient.learnAsync(candidates: session.selectedCandidates)
         resetToComposing()
     }
 

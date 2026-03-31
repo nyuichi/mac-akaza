@@ -16,16 +16,8 @@ extension AkazaInputController {
             return handleNextCandidateInConverting(client: client)
         case 126: // Up arrow
             return handlePreviousCandidateInConverting(client: client)
-        case 123: // Left arrow
-            if isShiftPressed {
-                return handleShrinkClauseLeft(client: client)
-            }
-            return handlePreviousClauseInConverting(client: client)
-        case 124: // Right arrow
-            if isShiftPressed {
-                return handleExtendClauseRight(client: client)
-            }
-            return handleNextClauseInConverting(client: client)
+        case 123, 124: // Left, Right arrow
+            return handleArrowKeyInConverting(keyCode: keyCode, isShiftPressed: isShiftPressed, client: client)
         case 36: // Enter
             return handleEnterInConverting(client: client)
         case 53: // Escape
@@ -34,6 +26,17 @@ extension AkazaInputController {
             return handleBackspaceInConverting(client: client)
         default:
             return handleDefaultKeyInConverting(event: event, client: client)
+        }
+    }
+
+    private func handleArrowKeyInConverting(keyCode: UInt16, isShiftPressed: Bool, client: any IMKTextInput) -> Bool {
+        switch keyCode {
+        case 123: // Left arrow
+            return isShiftPressed ? handleShrinkClauseLeft(client: client) : handlePreviousClauseInConverting(client: client)
+        case 124: // Right arrow
+            return isShiftPressed ? handleExtendClauseRight(client: client) : handleNextClauseInConverting(client: client)
+        default:
+            return false
         }
     }
 
@@ -128,14 +131,20 @@ extension AkazaInputController {
         guard let (yomi, forceRanges) = session.forceRangesForExtendRight() else { return true }
 
         let focusedIndex = session.focusedClauseIndex
-        guard let result = akazaClient.convertSync(yomi: yomi, forceRanges: forceRanges),
-              !result.isEmpty else { return true }
+        let originalHiragana = session.originalHiragana
 
-        var newSession = ConversionSession(originalHiragana: yomi, clauses: result)
-        newSession.focusedClauseIndex = min(focusedIndex, newSession.clauses.count - 1)
-        inputState = .converting(newSession)
-        updateConvertingMarkedText(client: client)
-        updateConversionCandidateWindow(client: client, trigger: .conversionNavigation)
+        akazaClient.convertAsync(yomi: yomi, forceRanges: forceRanges) { [weak self] result in
+            guard let self = self else { return }
+            guard case .converting(let current) = self.inputState,
+                  current.originalHiragana == originalHiragana else { return }
+            guard let result = result, !result.isEmpty else { return }
+
+            var newSession = ConversionSession(originalHiragana: yomi, clauses: result)
+            newSession.focusedClauseIndex = min(focusedIndex, newSession.clauses.count - 1)
+            self.inputState = .converting(newSession)
+            self.updateConvertingMarkedText(client: client)
+            self.updateConversionCandidateWindow(client: client, trigger: .conversionNavigation)
+        }
         return true
     }
 
@@ -144,14 +153,20 @@ extension AkazaInputController {
         guard let (yomi, forceRanges) = session.forceRangesForExtendLeft() else { return true }
 
         let focusedIndex = session.focusedClauseIndex
-        guard let result = akazaClient.convertSync(yomi: yomi, forceRanges: forceRanges),
-              !result.isEmpty else { return true }
+        let originalHiragana = session.originalHiragana
 
-        var newSession = ConversionSession(originalHiragana: yomi, clauses: result)
-        newSession.focusedClauseIndex = min(focusedIndex, newSession.clauses.count - 1)
-        inputState = .converting(newSession)
-        updateConvertingMarkedText(client: client)
-        updateConversionCandidateWindow(client: client, trigger: .conversionNavigation)
+        akazaClient.convertAsync(yomi: yomi, forceRanges: forceRanges) { [weak self] result in
+            guard let self = self else { return }
+            guard case .converting(let current) = self.inputState,
+                  current.originalHiragana == originalHiragana else { return }
+            guard let result = result, !result.isEmpty else { return }
+
+            var newSession = ConversionSession(originalHiragana: yomi, clauses: result)
+            newSession.focusedClauseIndex = min(focusedIndex, newSession.clauses.count - 1)
+            self.inputState = .converting(newSession)
+            self.updateConvertingMarkedText(client: client)
+            self.updateConversionCandidateWindow(client: client, trigger: .conversionNavigation)
+        }
         return true
     }
 }
