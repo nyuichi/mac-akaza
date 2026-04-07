@@ -1,5 +1,8 @@
 # Changelog
 
+## [v2026.331.1](https://github.com/akaza-im/mac-akaza/compare/v2026.331.0...v2026.331.1) - 2026-03-31
+- fix: ユーザー辞書追加ダイアログで Tab キーによるフィールド移動を有効化 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/84
+
 ## [v2026.331.0](https://github.com/akaza-im/mac-akaza/compare/v2026.327.0...v2026.331.0) - 2026-03-31
 - fix: akaza-server クラッシュ時の SIGPIPE によるIMEプロセス終了を修正 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/80
 - fix: 変換リクエストを非同期化してメインスレッドのブロックを解消 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/82
