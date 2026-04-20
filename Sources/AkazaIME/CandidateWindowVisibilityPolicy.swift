@@ -1,5 +1,4 @@
 import Foundation
-
 enum CandidateWindowTrigger {
     case composingSuggestion
     case conversionStarted

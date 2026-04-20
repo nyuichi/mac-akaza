@@ -85,11 +85,11 @@ class JSONRPCClient {
         }
     }
 
-    func learnSync(candidates: [(surface: String, yomi: String)]) {
+    func learnAsync(candidates: [(surface: String, yomi: String)]) {
         let params: [String: Any] = [
             "candidates": candidates.map { ["surface": $0.surface, "yomi": $0.yomi] }
         ]
-        _ = sendRequestSync(method: "learn", params: params)
+        sendRequest(method: "learn", params: params) { _ in }
     }
 
     func userDictListSync() -> [UserDictEntry]? {
@@ -112,19 +112,26 @@ class JSONRPCClient {
         return sendRequestSync(method: "user_dict_delete", params: params) != nil
     }
 
-    func convertSync(yomi: String, forceRanges: [[Int]]? = nil) -> ConvertResult? {
+    @discardableResult
+    func convertAsync(
+        yomi: String, forceRanges: [[Int]]? = nil, completion: @escaping (ConvertResult?) -> Void
+    ) -> Int {
         var params: [String: Any] = ["yomi": yomi]
         if let forceRanges = forceRanges {
             params["force_ranges"] = forceRanges
         }
-
-        guard let data = sendRequestSync(method: "convert", params: params) else { return nil }
-
-        do {
-            return try JSONDecoder().decode(ConvertResult.self, from: data)
-        } catch {
-            NSLog("AkazaIME: failed to decode convert result: \(error)")
-            return nil
+        return sendRequest(method: "convert", params: params) { data in
+            guard let data = data else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+            do {
+                let result = try JSONDecoder().decode(ConvertResult.self, from: data)
+                DispatchQueue.main.async { completion(result) }
+            } catch {
+                NSLog("AkazaIME: failed to decode convert result: \(error)")
+                DispatchQueue.main.async { completion(nil) }
+            }
         }
     }
 
@@ -176,9 +183,9 @@ class JSONRPCClient {
             do {
                 var data = try JSONSerialization.data(withJSONObject: request)
                 data.append(0x0A)
-                stdin.fileHandleForWriting.write(data)
+                try stdin.fileHandleForWriting.write(contentsOf: data)
             } catch {
-                NSLog("AkazaIME: failed to serialize JSON-RPC request: \(error)")
+                NSLog("AkazaIME: failed to write JSON-RPC request: \(error)")
                 self.completePending(id: requestID, data: nil)
             }
         }

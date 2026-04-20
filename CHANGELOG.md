@@ -1,5 +1,31 @@
 # Changelog
 
+## [v2026.407.0](https://github.com/akaza-im/mac-akaza/compare/v2026.331.0...v2026.407.0) - 2026-04-07
+- fix: ユーザー辞書追加ダイアログで Tab キーによるフィールド移動を有効化 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/84
+
+## [v2026.331.1](https://github.com/akaza-im/mac-akaza/compare/v2026.331.0...v2026.331.1) - 2026-03-31
+- fix: ユーザー辞書追加ダイアログで Tab キーによるフィールド移動を有効化 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/84
+
+## [v2026.331.0](https://github.com/akaza-im/mac-akaza/compare/v2026.327.0...v2026.331.0) - 2026-03-31
+- fix: akaza-server クラッシュ時の SIGPIPE によるIMEプロセス終了を修正 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/80
+- fix: 変換リクエストを非同期化してメインスレッドのブロックを解消 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/82
+- fix: akaza-server 再起動バックオフの上限を 60 秒から 15 秒に短縮 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/83
+
+## [v2026.325.0](https://github.com/akaza-im/mac-akaza/compare/v2026.308.0...v2026.325.0) - 2026-03-25
+- chore: upgrade libakaza to v2026.310.0 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/71
+- feat: 複数のSKK辞書をダウンロード可能にする設定UIを追加 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/73
+- fix: レビュー指摘対応 - 強制アンラップ除去とアクセス修飾子を修正 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/75
+- feat: macOS標準IME互換のファンクションキー・ショートカットキーに対応 by @gunyarakun in https://github.com/akaza-im/mac-akaza/pull/72
+- fix: ファンクションキー状態でのBackspace修正・USキーボード対応 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/76
+- docs: split README into user-facing README and developer HACKING.md by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/77
+- chore: upgrade libakaza to v2026.313.0 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/78
+- feat: 設定画面からローマ字テーブルを切り替えられるようにする by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/79
+
+## [v2026.308.0](https://github.com/akaza-im/mac-akaza/compare/v2026.304.0...v2026.308.0) - 2026-03-08
+- Add predictive candidate visibility setting by @nyuichi in https://github.com/akaza-im/mac-akaza/pull/63
+- fix: remove redundant sources list from test target in Package.swift by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/69
+- fix: duplicate candidate navigation jump (#64) by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/70
+
 ## [v2026.304.0](https://github.com/akaza-im/mac-akaza/compare/v2026.303.0...v2026.304.0) - 2026-03-04
 - fix: converting 状態で Backspace を押すと空文字がコミットされるバグを修正 by @tokuhirom in https://github.com/akaza-im/mac-akaza/pull/61
 

@@ -1,5 +1,9 @@
 import Cocoa
+import Darwin
 import InputMethodKit
+
+// akaza-server クラッシュ時にパイプ書き込みで SIGPIPE によりプロセスが終了するのを防ぐ
+signal(SIGPIPE, SIG_IGN)
 
 private func setupLogging() {
     let logDir = FileManager.default.homeDirectoryForCurrentUser
@@ -42,11 +46,17 @@ let akazaClient = JSONRPCClient(serverProcess: akazaServerProcess)
 
 // SKK-JISYO.L がなければバックグラウンドでダウンロードしてから起動
 // 既にある場合はそのまま即起動
-akazaServerProcess.downloadSKKDictIfNeeded {
-    DispatchQueue.main.async {
-        akazaServerProcess.start()
-        akazaClient.startReaderLoop()
+func startServer() {
+    akazaServerProcess.start()
+    akazaClient.startReaderLoop()
+}
+
+if let skkJisyoLConfig = predefinedDownloadableDicts.first(where: { $0.id == "skk-jisyo-l" }) {
+    akazaServerProcess.downloadDict(skkJisyoLConfig) { _ in
+        DispatchQueue.main.async { startServer() }
     }
+} else {
+    startServer()
 }
 
 NSLog("AkazaIME: IMKServer created successfully")

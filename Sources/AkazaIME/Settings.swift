@@ -54,6 +54,11 @@ class Settings {
         set { defaults.set(newValue, forKey: DefaultsName.shiftKatakanaInputEnabled) }
     }
 
+    var romkanTable: String {
+        get { defaults.string(forKey: "romkanTable") ?? "default" }
+        set { defaults.set(newValue, forKey: "romkanTable") }
+    }
+
     // サジェスト候補の最大パス数。k=9 は速度が遅いため k=5 をデフォルトとする (2026-02-26)
     // defaults write com.github.tokuhirom.inputmethod.Japanese.Akaza suggestMaxPaths -int 5
     var suggestMaxPaths: Int {

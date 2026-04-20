@@ -15,49 +15,71 @@ class RomajiConverter {
     var pendingRomaji: String { buffer }
     var pendingShiftStates: [Bool] { bufferShiftStates }
 
-    init(mapping: [String: String]? = nil) {
-        if let mapping {
-            self.mapping = mapping
-            buildPrefixes()
-        } else {
-            loadMapping()
-        }
+    init(tableName: String = "default") {
+        loadMapping(tableName: tableName)
     }
 
-    private func loadMapping() {
-        guard let path = findMappingFile() else {
-            NSLog("AkazaIME: romkan/default.json not found")
-            return
-        }
-        guard let data = FileManager.default.contents(atPath: path) else {
-            NSLog("AkazaIME: Failed to read romkan/default.json")
-            return
-        }
-        parseJSON(data)
+    init(mapping: [String: String]) {
+        self.mapping = mapping
         buildPrefixes()
     }
 
-    private func findMappingFile() -> String? {
-        if let bundle = Bundle.main.resourcePath {
-            let path = (bundle as NSString).appendingPathComponent("romkan/default.json")
-            if FileManager.default.fileExists(atPath: path) {
-                return path
-            }
+    func reload(tableName: String) {
+        mapping = [:]
+        prefixes = []
+        buffer = ""
+        loadMapping(tableName: tableName)
+    }
+
+    private func loadMapping(tableName: String) {
+        guard let resolved = resolveMapping(tableName: tableName) else {
+            NSLog("AkazaIME: Failed to load romkan table: \(tableName)")
+            return
         }
+        mapping = resolved
+        buildPrefixes()
+        NSLog("AkazaIME: Loaded \(mapping.count) romaji mappings from \(tableName)")
+    }
+
+    // 継承チェーンを再帰的に解決して最終的なマッピングを返す
+    private func resolveMapping(tableName: String) -> [String: String]? {
+        guard let data = loadFile(tableName: tableName) else { return nil }
+
+        // 新形式 JSON: {"name": "...", "mapping": {...}, "extends": "..."}
+        if let config = try? JSONDecoder().decode(RomKanConfig.self, from: data) {
+            var base: [String: String] = [:]
+            if let parentName = config.extends {
+                base = resolveMapping(tableName: parentName) ?? [:]
+            }
+            if let mappingOverrides = config.mapping {
+                for (key, value) in mappingOverrides {
+                    if let value = value {
+                        base[key] = value
+                    } else {
+                        base.removeValue(forKey: key)
+                    }
+                }
+            }
+            return base
+        }
+
+        // 旧形式 JSON: {"key": "value", ...}
+        if let dict = try? JSONSerialization.jsonObject(with: data) as? [String: String] {
+            return dict
+        }
+
+        NSLog("AkazaIME: romkan/\(tableName).json is not a valid mapping")
         return nil
     }
 
-    private func parseJSON(_ data: Data) {
-        do {
-            guard let dict = try JSONSerialization.jsonObject(with: data) as? [String: String] else {
-                NSLog("AkazaIME: romkan/default.json is not a valid mapping")
-                return
+    private func loadFile(tableName: String) -> Data? {
+        if let resourcePath = Bundle.main.resourcePath {
+            let path = (resourcePath as NSString).appendingPathComponent("romkan/\(tableName).json")
+            if FileManager.default.fileExists(atPath: path) {
+                return FileManager.default.contents(atPath: path)
             }
-            mapping = dict
-        } catch {
-            NSLog("AkazaIME: Failed to parse romkan/default.json: \(error)")
         }
-        NSLog("AkazaIME: Loaded \(mapping.count) romaji mappings")
+        return nil
     }
 
     private func buildPrefixes() {
@@ -208,4 +230,13 @@ class RomajiConverter {
     func setBuffer(_ newBuffer: String) {
         setState(buffer: newBuffer, shiftStates: Array(repeating: false, count: newBuffer.count))
     }
+}
+
+// MARK: - JSON形式
+
+private struct RomKanConfig: Decodable {
+    let name: String?
+    let description: String?
+    let extends: String?
+    let mapping: [String: String?]?
 }

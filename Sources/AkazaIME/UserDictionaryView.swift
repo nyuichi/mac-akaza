@@ -88,6 +88,9 @@ class UserDictionaryView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         let surfaceField = NSTextField(frame: NSRect(x: 55, y: 4, width: 240, height: 22))
         container.addSubview(surfaceField)
 
+        yomiField.nextKeyView = surfaceField
+        surfaceField.nextKeyView = yomiField
+
         alert.accessoryView = container
         alert.window.initialFirstResponder = yomiField
 

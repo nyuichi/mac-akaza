@@ -11,6 +11,7 @@ use libakaza::engine::bigram_word_viterbi_engine::BigramWordViterbiEngineBuilder
 use libakaza::graph::reranking::ReRankingWeights;
 use libakaza::lm::system_bigram::MarisaSystemBigramLM;
 use libakaza::lm::system_unigram_lm::MarisaSystemUnigramLM;
+use libakaza::user_side_data::encryption_key::load_or_create_default_encryption_key;
 use libakaza::user_side_data::user_data::UserData;
 use log::info;
 
@@ -29,9 +30,18 @@ fn main() -> Result<()> {
 
     info!("Starting akaza-server with model: {}", model_dir);
 
-    let user_data = Arc::new(Mutex::new(
-        UserData::load_from_default_path().unwrap_or_default(),
-    ));
+    let user_data = Arc::new(Mutex::new(match load_or_create_default_encryption_key() {
+        Ok(key) => UserData::load_from_default_path(Some(&key)).unwrap_or_else(|e| {
+            log::warn!("Failed to load user data: {e}. Starting with empty user data.");
+            UserData::default()
+        }),
+        Err(e) => {
+            log::warn!(
+                "Failed to load/create encryption key: {e}. User data will not be persisted."
+            );
+            UserData::default()
+        }
+    }));
 
     let mut dicts: Vec<DictConfig> = Vec::new();
     if let Ok(basedir) = xdg::BaseDirectories::with_prefix("akaza") {
